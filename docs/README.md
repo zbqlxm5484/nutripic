@@ -7,6 +7,7 @@ This folder contains human-readable project rules and conventions.
 - `agent-guidelines.md`: common behavioral guidelines for coding agents and developers.
 - `git-conventions.md`: branch, commit, PR, and merge workflow conventions.
 - `api-conventions.md`: API endpoint and naming conventions, centered on the Django backend.
+- `development.md`: Neutripic service definition, core features, architecture, and MVP scope.
 
 ## How To Use
 
