@@ -1,13 +1,28 @@
 # Project Documentation
 
-This folder contains human-readable project rules and conventions.
+This folder is the single home for human-readable project rules, conventions, specifications, and product planning docs.
 
-## Documents
+## Common
 
-- `agent-guidelines.md`: common behavioral guidelines for coding agents and developers.
-- `git-conventions.md`: branch, commit, PR, and merge workflow conventions.
-- `api-conventions.md`: API endpoint and naming conventions, centered on the Django backend.
-- `development.md`: Neutripic service definition, core features, architecture, and MVP scope.
+- `common/agent-guidelines.md`: common behavioral guidelines for coding agents and developers.
+- `common/development.md`: Neutripic service definition, core features, architecture, and MVP scope.
+
+## Conventions
+
+- `conventions/git-conventions.md`: branch, commit, PR, and merge workflow conventions.
+- `conventions/api-conventions.md`: API endpoint and naming conventions, centered on the Django backend.
+
+## API
+
+- `api/backend-api-spec.md`: Django REST API specification called by the frontend.
+- `api/ai-api-spec.md`: internal AI/RAG server API specification called by the backend.
+
+## Frontend
+
+- `frontend/README.md`: frontend documentation index.
+- `frontend/user-flow.md`: end-to-end user flow.
+- `frontend/page-flow.md`: page list, routes, auth conditions, and navigation flow.
+- `frontend/page-components.md`: page-level component and state breakdown.
 
 ## How To Use
 
