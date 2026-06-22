@@ -1,18 +1,18 @@
-# API And Naming Conventions
+# API와 이름 규칙
 
-API endpoint and payload naming should follow the backend. Since the backend is Django, API names should use snake_case unless an existing contract or external integration requires otherwise.
+API 엔드포인트와 payload 이름은 백엔드를 기준으로 맞춘다. 백엔드가 Django이므로, 기존 계약이나 외부 연동에서 다른 형식을 요구하지 않는 한 API 이름은 snake_case를 사용한다.
 
-## Source Of Truth
+## 기준
 
-- The Django backend is the source of truth for API endpoints.
-- Frontend and AI integrations should follow backend naming instead of inventing alternate casing.
-- If backend and frontend naming disagree, resolve the backend contract first, then update consumers.
+- Django 백엔드를 API 엔드포인트의 기준으로 삼는다.
+- 프론트엔드와 AI 연동 코드는 별도 casing을 만들지 않고 백엔드 이름을 따른다.
+- 백엔드와 프론트엔드의 이름이 다르면 먼저 백엔드 계약을 정리한 뒤 사용하는 쪽을 수정한다.
 
-## Endpoint Naming
+## 엔드포인트 이름
 
-Use snake_case for API path segments.
+API path segment에는 snake_case를 사용한다.
 
-Recommended:
+권장:
 
 ```text
 /api/user_profiles/
@@ -20,7 +20,7 @@ Recommended:
 /api/nutrition_logs/
 ```
 
-Avoid:
+피할 예:
 
 ```text
 /api/userProfiles/
@@ -28,19 +28,19 @@ Avoid:
 /api/nutritionLogs/
 ```
 
-Use trailing slashes consistently if the Django project is configured that way. Do not mix styles within the same API surface.
+Django 프로젝트가 trailing slash를 사용하도록 설정되어 있다면 일관되게 사용한다. 같은 API 영역 안에서 스타일을 섞지 않는다.
 
-## Request And Response Fields
+## 요청과 응답 필드
 
-Use snake_case for:
+다음 항목에는 snake_case를 사용한다.
 
-- JSON request body fields
-- JSON response fields
-- Query parameters
-- Path parameter names in documentation
-- Error response fields
+- JSON 요청 본문 필드
+- JSON 응답 필드
+- Query parameter
+- 문서에 적는 path parameter 이름
+- 에러 응답 필드
 
-Recommended:
+권장:
 
 ```json
 {
@@ -50,7 +50,7 @@ Recommended:
 }
 ```
 
-Avoid:
+피할 예:
 
 ```json
 {
@@ -60,37 +60,37 @@ Avoid:
 }
 ```
 
-## Frontend Integration
+## 프론트엔드 연동
 
-Frontend code may use local conventions internally, but API boundaries must preserve backend field names.
+프론트엔드 내부 코드는 자체 규칙을 사용할 수 있지만, API 경계에서는 백엔드 필드 이름을 그대로 유지한다.
 
-- Do not silently convert API names unless there is an established shared mapper.
-- Keep request and response typings aligned with backend serializers.
-- When documenting or mocking API data, use the backend snake_case contract.
+- 이미 합의된 공통 mapper가 없다면 API 이름을 조용히 변환하지 않는다.
+- 요청과 응답 타입은 백엔드 serializer와 맞춘다.
+- API 데이터를 문서화하거나 mock으로 만들 때도 백엔드의 snake_case 계약을 사용한다.
 
-## Backend Integration
+## 백엔드 구현
 
-Backend code should keep Django and Django REST Framework conventions consistent.
+백엔드 코드는 Django와 Django REST Framework 규칙을 일관되게 따른다.
 
-- Prefer serializer field names that match API response names.
-- Keep URL route names and path segments predictable.
-- Do not introduce camelCase fields for internal APIs.
-- If an external service requires a different convention, isolate the conversion at the integration boundary.
+- serializer 필드 이름은 API 응답 이름과 맞추는 것을 우선한다.
+- URL route 이름과 path segment는 예측 가능하게 유지한다.
+- 내부 API에는 camelCase 필드를 도입하지 않는다.
+- 외부 서비스가 다른 규칙을 요구하면 연동 경계에서만 변환한다.
 
-## AI Integration
+## AI 연동
 
-AI pipelines that call project APIs should use the same backend contract.
+프로젝트 API를 호출하는 AI pipeline도 같은 백엔드 계약을 사용한다.
 
-- Prompt examples that include API payloads should use snake_case.
-- Dataset fields intended to map to API fields should use the backend field names.
-- Generated outputs that become API requests should be validated against backend serializers or documented schemas.
+- API payload가 포함된 프롬프트 예시는 snake_case를 사용한다.
+- API 필드와 연결되는 데이터셋 필드는 백엔드 필드 이름을 사용한다.
+- API 요청으로 이어지는 생성 결과는 백엔드 serializer나 문서화된 schema를 기준으로 검증한다.
 
-## Exceptions
+## 예외
 
-Exceptions are allowed only when there is a clear reason:
+명확한 이유가 있을 때만 예외를 허용한다.
 
-- An external API or SDK requires another casing style.
-- A legacy endpoint already uses another convention and changing it would break clients.
-- A documented migration plan temporarily supports both styles.
+- 외부 API나 SDK가 다른 casing을 요구하는 경우.
+- 기존 endpoint가 이미 다른 규칙을 사용하고 있고, 변경하면 client가 깨지는 경우.
+- 문서화된 migration 계획에 따라 일시적으로 두 스타일을 모두 지원하는 경우.
 
-When an exception exists, document it near the API contract and keep conversion logic localized.
+예외가 있다면 API 계약 근처에 문서화하고, 변환 로직은 해당 경계 안에만 둔다.
