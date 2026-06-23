@@ -496,19 +496,47 @@ Response `201`:
 
 게시글 목록 조회. 비회원도 조회 가능하다.
 
+`ordering=latest`는 인피니트 스크롤을 위해 cursor pagination을 사용한다.
+`ordering=likes`는 좋아요 수가 변동 가능한 값이므로 기존 page number pagination을 유지한다.
+
 Query parameters:
 
 | Name | Type | Required | Description |
 | --- | --- | --- | --- |
-| `ordering` | string | no | `latest`, `likes` |
-| `page` | integer | no | 페이지 번호 |
+| `ordering` | string | no | `latest`, `likes`. 기본값은 `latest` |
+| `cursor` | string | no | `ordering=latest`에서 사용하는 다음/이전 페이지 커서 |
+| `page` | integer | no | `ordering=likes`에서 사용하는 페이지 번호 |
 | `page_size` | integer | no | 페이지 크기 |
 
-Response `200`:
+Response `200` for `ordering=latest`:
+
+```json
+{
+  "next": "https://example.com/api/v1/posts/?cursor=cD0yMDI2LTA2LTIzKzEyJTNBMDA%3D&page_size=10",
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "title": "수면 관리 루틴 공유합니다",
+      "author": {
+        "id": 1,
+        "username": "neutripic_user"
+      },
+      "like_count": 3,
+      "comment_count": 2,
+      "created_at": "2026-06-22T12:00:00+09:00"
+    }
+  ]
+}
+```
+
+Response `200` for `ordering=likes`:
 
 ```json
 {
   "count": 1,
+  "next": null,
+  "previous": null,
   "results": [
     {
       "id": 1,

@@ -111,11 +111,36 @@ class CommunityApiTests(APITestCase):
 
         ordering_response = self.client.get('/api/v1/posts/?ordering=likes')
         self.assertEqual(ordering_response.status_code, status.HTTP_200_OK)
+        self.assertIn('count', ordering_response.data)
         self.assertEqual(ordering_response.data['results'][0]['id'], second_post.id)
 
         invalid_ordering_response = self.client.get('/api/v1/posts/?ordering=bad')
         self.assertEqual(invalid_ordering_response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(invalid_ordering_response.data['error_code'], 'validation_error')
+
+    def test_latest_posts_use_cursor_pagination(self):
+        for index in range(12):
+            Post.objects.create(
+                author=self.author,
+                title=f'Post {index}',
+                content=f'Content {index}',
+            )
+
+        response = self.client.get('/api/v1/posts/?ordering=latest&page_size=10')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('next', response.data)
+        self.assertIn('previous', response.data)
+        self.assertIn('results', response.data)
+        self.assertNotIn('count', response.data)
+        self.assertEqual(len(response.data['results']), 10)
+        self.assertIsNotNone(response.data['next'])
+
+        next_response = self.client.get(response.data['next'])
+
+        self.assertEqual(next_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(next_response.data['results']), 2)
+        self.assertIsNone(next_response.data['next'])
 
     def test_comments_replies_and_permissions(self):
         post = Post.objects.create(
