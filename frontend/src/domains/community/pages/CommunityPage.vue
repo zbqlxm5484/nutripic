@@ -12,23 +12,15 @@
         </template>
       </PageHeader>
 
-      <form class="search-bar" aria-label="게시글 정렬" @submit.prevent="applyOrdering">
-        <select v-model="selectedOrdering" class="form-control" name="ordering">
-          <option value="latest">최신순</option>
-          <option value="likes">추천순</option>
-        </select>
-        <BaseButton>적용</BaseButton>
-      </form>
-
-      <LoadingState v-if="isLoading" label="게시글 목록을 불러오는 중입니다" />
+      <LoadingState v-if="isInitialLoading" label="게시글 목록을 불러오는 중입니다" />
 
       <ErrorState
-        v-else-if="loadError"
+        v-else-if="loadError && posts.length === 0"
         title="게시글 목록을 불러오지 못했습니다"
         :description="loadError"
       >
         <template #action>
-          <BaseButton size="sm" @click="loadPosts">다시 시도</BaseButton>
+          <BaseButton size="sm" @click="loadInitialPosts">다시 시도</BaseButton>
         </template>
       </ErrorState>
 
@@ -44,119 +36,80 @@
 
       <template v-else>
         <div class="post-list" aria-live="polite">
-          <article v-for="post in posts" :key="post.id" class="post-card">
-            <div>
-              <p>{{ formatAuthor(post.author) }}</p>
+          <article v-for="post in posts" :key="post.id" class="thread-post">
+            <div class="thread-post__rail" aria-hidden="true">
+              <span class="thread-post__avatar">{{ getAuthorInitial(post.author) }}</span>
+              <span class="thread-post__line"></span>
+            </div>
+            <div class="thread-post__body">
+              <p class="thread-post__meta">
+                <strong>{{ formatAuthor(post.author) }}</strong>
+                <span>{{ formatDate(post.created_at) }}</span>
+              </p>
               <h2>
                 <RouterLink :to="`/community/${post.id}`">{{ post.title }}</RouterLink>
               </h2>
-              <span>{{ formatDate(post.created_at) }}</span>
+              <p v-if="post.content" class="thread-post__content">{{ truncateContent(post.content) }}</p>
+              <RouterLink class="thread-post__reply" :to="`/community/${post.id}`">
+                답글 {{ post.comment_count ?? 0 }}개 보기
+              </RouterLink>
             </div>
-            <dl class="post-card__stats">
-              <div>
-                <dt>추천</dt>
-                <dd>{{ post.like_count ?? 0 }}</dd>
-              </div>
-              <div>
-                <dt>댓글</dt>
-                <dd>{{ post.comment_count ?? 0 }}</dd>
-              </div>
-            </dl>
           </article>
         </div>
 
-        <nav class="pagination" aria-label="게시글 페이지">
-          <BaseButton size="sm" :disabled="currentPage <= 1" @click="setPage(currentPage - 1)">
-            이전
-          </BaseButton>
-          <span>{{ currentPage }}페이지 · 총 {{ totalCount }}개</span>
-          <BaseButton size="sm" :disabled="!hasNextPage" @click="setPage(currentPage + 1)">
-            다음
-          </BaseButton>
-        </nav>
+        <ErrorState
+          v-if="loadError"
+          title="다음 게시글을 불러오지 못했습니다"
+          :description="loadError"
+        >
+          <template #action>
+            <BaseButton size="sm" @click="loadMorePosts">다시 시도</BaseButton>
+          </template>
+        </ErrorState>
+
+        <div ref="sentinel" class="feed-sentinel" aria-hidden="true"></div>
+
+        <div class="feed-status" role="status">
+          <LoadingState v-if="isLoadingMore" label="다음 게시글을 불러오는 중입니다" />
+          <BaseButton v-else-if="hasMore" size="sm" @click="loadMorePosts">더 보기</BaseButton>
+          <span v-else>모든 게시글을 확인했습니다.</span>
+        </div>
       </template>
     </section>
   </AppLayout>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { communityApi } from '../../../shared/api'
 import { AppLayout, BaseButton, EmptyState, ErrorState, LoadingState, PageHeader } from '../../../shared/components'
+import { useThreadFeed } from '../composables/useThreadFeed'
 
 const route = useRoute()
-const router = useRouter()
 
-const posts = ref([])
-const isLoading = ref(true)
-const loadError = ref('')
-const selectedOrdering = ref(normalizeOrdering(route.query.ordering))
-const totalCount = ref(0)
-const hasNextPage = ref(false)
-
-const currentPage = computed(() => normalizePage(route.query.page))
-
-watch(
-  () => [route.query.ordering, route.query.page],
-  () => {
-    selectedOrdering.value = normalizeOrdering(route.query.ordering)
-    loadPosts()
+const {
+  items: posts,
+  isInitialLoading,
+  isLoadingMore,
+  loadError,
+  hasMore,
+  sentinel,
+  loadInitialItems: loadInitialPosts,
+  loadMoreItems: loadMorePosts,
+} = useThreadFeed({
+  loadItems: communityApi.listPosts,
+  initialQuery: {
+    ordering: 'latest',
   },
-  { immediate: true },
-)
-
-async function loadPosts() {
-  isLoading.value = true
-  loadError.value = ''
-
-  try {
-    const response = await communityApi.listPosts({
-      ordering: selectedOrdering.value,
-      page: currentPage.value,
-    })
-
-    posts.value = Array.isArray(response?.results) ? response.results : []
-    totalCount.value = response?.count ?? posts.value.length
-    hasNextPage.value = Boolean(response?.next)
-  } catch (error) {
-    loadError.value = error?.message || '잠시 후 다시 시도해 주세요.'
-  } finally {
-    isLoading.value = false
-  }
-}
-
-function applyOrdering() {
-  router.replace({
-    path: '/community',
-    query: {
-      ordering: selectedOrdering.value,
-      page: 1,
-    },
-  })
-}
-
-function setPage(page) {
-  router.replace({
-    path: '/community',
-    query: {
-      ordering: selectedOrdering.value,
-      page,
-    },
-  })
-}
-
-function normalizeOrdering(value) {
-  return value === 'likes' ? 'likes' : 'latest'
-}
-
-function normalizePage(value) {
-  const page = Number.parseInt(value, 10)
-  return Number.isFinite(page) && page > 0 ? page : 1
-}
+  getRouteKey: () => route.fullPath,
+})
 
 function formatAuthor(author) {
-  return author?.username ? `작성자 ${author.username}` : '작성자 알 수 없음'
+  return author?.username || '알 수 없음'
+}
+
+function getAuthorInitial(author) {
+  return formatAuthor(author).slice(0, 1).toUpperCase()
 }
 
 function formatDate(value) {
@@ -167,6 +120,12 @@ function formatDate(value) {
     timeStyle: 'short',
   }).format(new Date(value))
 }
+
+function truncateContent(value) {
+  const normalized = String(value).replace(/\s+/g, ' ').trim()
+  return normalized.length > 160 ? `${normalized.slice(0, 160)}...` : normalized
+}
+
 </script>
 
 <style scoped>
@@ -175,76 +134,100 @@ function formatDate(value) {
   gap: 20px;
 }
 
-.post-card span {
-  display: block;
-  margin-top: 8px;
-  color: #5b6b65;
-}
-
-.search-bar {
-  display: grid;
-  grid-template-columns: minmax(0, 180px) auto;
-  gap: 10px;
-  justify-content: start;
-  padding: 16px;
-  border: 1px solid #dde7e2;
-  border-radius: 8px;
-  background: #ffffff;
-}
-
 .post-list {
   display: grid;
-  gap: 14px;
+  margin: 0 auto;
+  width: min(100%, 680px);
 }
 
-.post-card {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 22px;
-  border: 1px solid #dde7e2;
-  border-radius: 8px;
+.thread-post {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 14px;
+  padding: 18px 0;
+  border-bottom: 1px solid #dde7e2;
   background: #ffffff;
 }
 
-.post-card p {
-  margin: 0 0 8px;
-  color: #4e6f61;
-  font-weight: 700;
+.thread-post__rail {
+  display: grid;
+  justify-items: center;
+  grid-template-rows: 40px 1fr;
 }
 
-.post-card h2 {
-  margin: 0;
-  font-size: 1.25rem;
+.thread-post__avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: #e4f1eb;
+  color: #165a46;
+  font-weight: 800;
 }
 
-.post-card__stats {
+.thread-post__line {
+  width: 2px;
+  min-height: 100%;
+  background: #edf2ef;
+}
+
+.thread-post__body {
+  display: grid;
+  gap: 8px;
+}
+
+.thread-post__meta {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
   margin: 0;
-  text-align: right;
-}
-
-.post-card__stats dt {
   color: #5b6b65;
   font-size: 0.875rem;
 }
 
-.post-card__stats dd {
-  margin: 4px 0 0;
+.thread-post__meta strong {
   color: #31443d;
+}
+
+.thread-post h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  line-height: 1.4;
+}
+
+.thread-post__content {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: #31443d;
+  line-height: 1.6;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.thread-post__reply {
+  width: fit-content;
+  color: #5b6b65;
+  font-size: 0.875rem;
   font-weight: 700;
 }
 
-.pagination {
+.feed-sentinel {
+  height: 1px;
+}
+
+.feed-status {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
   justify-content: center;
+  min-height: 48px;
 }
 
-.pagination span {
+.feed-status span {
   color: #5b6b65;
 }
 
@@ -253,16 +236,9 @@ a {
 }
 
 @media (max-width: 760px) {
-  .search-bar {
-    grid-template-columns: 1fr;
-  }
-
-  .post-card {
-    flex-direction: column;
-  }
-
-  .post-card__stats {
-    text-align: left;
+  .thread-post {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 10px;
   }
 }
 </style>

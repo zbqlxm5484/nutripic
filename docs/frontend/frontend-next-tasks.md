@@ -420,7 +420,7 @@ Status: Done
 
 Priority: Low
 
-Status: Pending
+Status: Done
 
 ### Goal
 
@@ -428,12 +428,18 @@ Status: Pending
 
 ### Checklist
 
-- [ ] 마이페이지 요약 API를 연결한다.
-- [ ] 내 회원 정보 조회 API를 연결한다.
-- [ ] 회원 정보 수정 API를 연결한다.
-- [ ] 비밀번호 변경 API를 연결한다.
-- [ ] 회원 탈퇴 API를 연결한다.
-- [ ] 탈퇴 전 확인 UI와 성공 후 로그아웃 처리를 구현한다.
+- [x] 마이페이지 요약 API를 연결한다.
+- [x] 내 회원 정보 조회 API를 연결한다.
+- [x] 회원 정보 수정 API를 연결한다.
+- [x] 비밀번호 변경 API를 연결한다.
+- [x] 회원 탈퇴 API를 연결한다.
+- [x] 탈퇴 전 확인 UI와 성공 후 로그아웃 처리를 구현한다.
+
+### Implementation Notes
+
+- `/mypage`는 요약 API의 회원 정보, 추천 기록 수, 게시글 수, 댓글 수를 렌더링한다.
+- `/mypage/profile`은 회원 정보 조회/수정, 비밀번호 변경, 회원 탈퇴를 각각 API와 연결한다.
+- 회원 탈퇴 성공 시 로컬 인증 정보를 삭제하고 홈으로 이동한다.
 
 ### Success Criteria
 
@@ -459,7 +465,7 @@ Status: Pending
 
 Priority: Low
 
-Status: Pending
+Status: Done
 
 ### Goal
 
@@ -467,14 +473,21 @@ Status: Pending
 
 ### Checklist
 
-- [ ] 관리자 라우트 접근 권한을 검사한다.
-- [ ] 회원 목록 조회 API를 연결한다.
-- [ ] 회원 상태 수정 API를 연결한다.
-- [ ] 관리자 게시글 목록 조회 API를 연결한다.
-- [ ] 관리자 게시글 삭제 API를 연결한다.
-- [ ] 관리자 댓글 목록 조회 API를 연결한다.
-- [ ] 관리자 댓글 삭제 API를 연결한다.
-- [ ] 권한 없음, 로딩, 실패, 삭제 확인 상태를 표시한다.
+- [x] 관리자 라우트 접근 권한을 검사한다.
+- [x] 회원 목록 조회 API를 연결한다.
+- [x] 회원 상태 수정 API를 연결한다.
+- [x] 관리자 게시글 목록 조회 API를 연결한다.
+- [x] 관리자 게시글 삭제 API를 연결한다.
+- [x] 관리자 댓글 목록 조회 API를 연결한다.
+- [x] 관리자 댓글 삭제 API를 연결한다.
+- [x] 권한 없음, 로딩, 실패, 삭제 확인 상태를 표시한다.
+
+### Implementation Notes
+
+- 관리자 라우트는 기존 `requiresAdmin` guard를 사용한다.
+- 관리자 홈은 추천 기록 통계와 인기 건강 목표/성분 요약을 표시한다.
+- 회원, 게시글, 댓글 관리 화면은 목록 로딩/빈 목록/실패 상태와 관리 액션을 API에 연결한다.
+- 삭제 확인은 현재 `window.confirm`으로 처리한다. 별도 모달 UX가 필요하면 추후 공용 확인 컴포넌트를 도입한다.
 
 ### Success Criteria
 
@@ -520,6 +533,6 @@ Status: Pending
 - [x] `npm run build`가 성공한다.
 - [ ] 비로그인 보호 라우트 접근 시 로그인 페이지로 이동한다.
 - [ ] 로그인 성공 후 `redirect_to` 경로로 복귀한다.
-- [ ] 백엔드 API request/response field는 snake_case를 유지한다.
-- [ ] API 에러 응답은 모든 페이지에서 일관된 메시지로 표시된다.
+- [x] 백엔드 API request/response field는 snake_case를 유지한다.
+- [x] API 에러 응답은 모든 페이지에서 일관된 메시지로 표시된다.
 - [ ] 리포트 화면에서 iHerb 상품 정보는 표시하지 않고 검증된 성분 링크만 표시한다.
