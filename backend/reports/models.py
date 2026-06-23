@@ -1,5 +1,5 @@
 from django.db import models
-
+from django.conf import settings
 
 class HealthGoal(models.Model):
     code = models.CharField(max_length=50, unique=True)
@@ -38,3 +38,33 @@ class SpecialConditionOption(models.Model):
 
     def __str__(self):
         return self.name
+
+class Report(models.Model):
+    STATUS_COMPLETED = 'completed'
+    STATUS_FAILED = 'failed'
+
+    STATUS_CHOICES = [
+        (STATUS_COMPLETED, 'completed'),
+        (STATUS_FAILED, 'failed'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='reports',
+    )
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES)
+    title = models.CharField(max_length=255)
+    input_summary = models.JSONField(default=dict)
+    recommended_ingredients = models.JSONField(default=list)
+    lifestyle_tips = models.JSONField(default=list)
+    disclaimer = models.TextField()
+    citations = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+
+    def __str__(self):
+        return self.title

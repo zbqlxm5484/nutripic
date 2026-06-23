@@ -1,10 +1,17 @@
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, status
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
 
-from .models import HealthGoal, MedicationOption, SpecialConditionOption
+from .models import HealthGoal, MedicationOption, Report, SpecialConditionOption
+from .services import generate_report
 from .serializers import (
     HealthGoalSerializer,
     MedicationOptionSerializer,
     SpecialConditionOptionSerializer,
+    ReportCreateSerializer,
+    ReportDetailSerializer,
+    ReportListSerializer,
+    ReportTitleUpdateSerializer,
 )
 
 
@@ -24,3 +31,59 @@ class SpecialConditionOptionListView(generics.ListAPIView):
     queryset = SpecialConditionOption.objects.filter(is_active=True)
     serializer_class = SpecialConditionOptionSerializer
     permission_classes = [permissions.AllowAny]
+
+class ReportPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+class ReportListCreateView(generics.ListCreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = ReportPagination
+    http_method_names = ['get', 'post', 'head', 'options']
+
+    def get_queryset(self):
+        return Report.objects.filter(user=self.request.user)
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return ReportListSerializer
+        return ReportCreateSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = ReportCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result = generate_report(serializer.validated_data)
+
+        if result['status'] == 'needs_clarification':
+            return Response(result, status=status.HTTP_200_OK)
+
+        report = Report.objects.create(
+            user=request.user,
+            status=result['status'],
+            title=result['title'],
+            input_summary=result['input_summary'],
+            recommended_ingredients=result['recommended_ingredients'],
+            lifestyle_tips=result['lifestyle_tips'],
+            disclaimer=result['disclaimer'],
+            citations=result['citations'],
+        )
+
+        response_serializer = ReportDetailSerializer(report)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ReportDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    lookup_url_kwarg = 'report_id'
+    http_method_names = ['get', 'patch', 'delete', 'head', 'options']
+
+    def get_queryset(self):
+        return Report.objects.filter(user=self.request.user)
+
+    def get_serializer_class(self):
+        if self.request.method == 'PATCH':
+            return ReportTitleUpdateSerializer
+        return ReportDetailSerializer
