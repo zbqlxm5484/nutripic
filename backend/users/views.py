@@ -137,7 +137,7 @@ class MyPageView(APIView):
                 'age': user.age,
                 'gender': user.gender,
             },
-            'report_count': 0,
-            'post_count': 0,
-            'comment_count': 0,
+            'report_count': user.reports.count(),
+            'post_count': user.posts.count(),
+            'comment_count': user.comments.count(),
         })
