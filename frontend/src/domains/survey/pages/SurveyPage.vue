@@ -30,6 +30,48 @@
         :title="currentStep.title"
         :description="currentStep.description"
       >
+        <template v-if="currentStep.inputType === 'number'">
+          <input
+            v-model.number="state[currentStep.field]"
+            class="form-control"
+            type="number"
+            :name="currentStep.field"
+            :min="currentStep.min"
+            :max="currentStep.max"
+            :placeholder="currentStep.title"
+            :disabled="isSubmitting"
+          />
+
+          <FormErrorMessage
+            v-if="canShowError(currentStep.id) && !currentValidation.isValid"
+            :message="currentValidation.message"
+          />
+        </template>
+
+        <template v-else-if="currentStep.inputType === 'single_select'">
+          <div class="chip-grid">
+            <label
+              v-for="option in currentOptions"
+              :key="option.code"
+              :class="{ 'chip-grid__item--checked': state[currentStep.field] === option.code }"
+            >
+              <input
+                v-model="state[currentStep.field]"
+                type="radio"
+                :name="currentStep.field"
+                :value="option.code"
+                :disabled="isSubmitting"
+              />
+              <span>{{ option.name }}</span>
+            </label>
+          </div>
+
+          <FormErrorMessage
+            v-if="canShowError(currentStep.id) && !currentValidation.isValid"
+            :message="currentValidation.message"
+          />
+        </template>
+
         <template v-if="currentStep.inputType === 'multi_select'">
           <EmptyState
             v-if="currentOptions.length === 0"
@@ -47,6 +89,7 @@
                 :name="currentStep.field"
                 :value="option.code"
                 :checked="state[currentStep.field].includes(option.code)"
+                :disabled="isSubmitting"
                 @change="selectStepOption(currentStep, option.code)"
               />
               <span>{{ option.name }}</span>
@@ -71,8 +114,22 @@
             name="additional_notes"
             rows="5"
             placeholder="과도한 개인정보는 입력하지 마세요."
+            :disabled="isSubmitting"
           />
         </template>
+      </ContentSection>
+
+      <ContentSection
+        v-if="clarificationQuestions.length > 0"
+        title-id="clarification-title"
+        title="추가 확인이 필요합니다"
+        description="아래 질문을 추가 정보에 반영한 뒤 다시 요청해 주세요."
+      >
+        <ul class="clarification-list">
+          <li v-for="question in clarificationQuestions" :key="question.code ?? question.message">
+            {{ question.message }}
+          </li>
+        </ul>
       </ContentSection>
 
       <ContentSection
@@ -88,13 +145,15 @@
         </ol>
       </ContentSection>
 
+      <FormErrorMessage :message="submitError" />
+
       <SafetyNotice />
 
       <div class="action-bar" aria-label="설문 이동">
-        <BaseButton :disabled="isFirstStep" @click="previous">이전</BaseButton>
-        <BaseButton v-if="!isLastStep" variant="primary" @click="next">다음</BaseButton>
-        <BaseButton v-else variant="primary" @click="handleCreateReportRequest">
-          리포트 생성 요청
+        <BaseButton :disabled="isFirstStep || isSubmitting" @click="previous">이전</BaseButton>
+        <BaseButton v-if="!isLastStep" variant="primary" :disabled="isSubmitting" @click="next">다음</BaseButton>
+        <BaseButton v-else variant="primary" :disabled="isSubmitting" @click="handleCreateReportRequest">
+          {{ isSubmitting ? '리포트 생성 중' : '리포트 생성 요청' }}
         </BaseButton>
       </div>
     </template>
@@ -102,8 +161,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { reportApi } from '../../../shared/api'
 import {
   BaseButton,
   ContentSection,
@@ -141,26 +201,65 @@ const {
   loadSurveyOptions,
   getOptionName,
 } = useSurveyOptions(surveySteps)
+const isSubmitting = ref(false)
+const submitError = ref('')
+const clarificationQuestions = ref([])
 
 const currentOptions = computed(() => {
-  return optionGroups[currentStep.value.optionGroup] ?? []
+  return currentStep.value.options ?? optionGroups[currentStep.value.optionGroup] ?? []
 })
 
 onMounted(() => {
   loadSurveyOptions()
 })
 
-function handleCreateReportRequest() {
+async function handleCreateReportRequest() {
   if (!surveyValidation.value.isValid) {
     showValidationFor(surveyValidation.value.stepId)
     return
   }
 
-  window.sessionStorage.setItem(
-    'neutripic:survey_payload',
-    JSON.stringify(buildReportPayload(state, optionGroups)),
-  )
-  router.push('/reports/generating')
+  isSubmitting.value = true
+  submitError.value = ''
+  clarificationQuestions.value = []
+
+  try {
+    const report = await reportApi.create(buildReportPayload(state, optionGroups))
+
+    if (report?.status === 'needs_clarification') {
+      clarificationQuestions.value = Array.isArray(report.questions) ? report.questions : []
+      submitError.value = '추가 확인 질문을 확인해 주세요.'
+      showValidationFor('additional_notes')
+      return
+    }
+
+    storeLatestReport(report)
+    router.push('/reports/new')
+  } catch (error) {
+    submitError.value = getCreateReportErrorMessage(error)
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+function getCreateReportErrorMessage(error) {
+  if (error?.errorCode === 'rate_limit_exceeded') {
+    return '오늘 생성 가능한 리포트 횟수를 초과했습니다. 잠시 후 다시 시도해 주세요.'
+  }
+
+  if (error?.errorCode === 'validation_error') {
+    return error.message || '설문 입력값을 확인해 주세요.'
+  }
+
+  if (error?.errorCode === 'ai_server_error' || error?.isServerError) {
+    return 'AI 리포트 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.'
+  }
+
+  return error?.message || '리포트 생성 요청에 실패했습니다.'
+}
+
+function storeLatestReport(report) {
+  window.sessionStorage.setItem('neutripic:latest_report', JSON.stringify(report))
 }
 </script>
 
@@ -223,6 +322,14 @@ function handleCreateReportRequest() {
 }
 
 .priority-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  color: #31443d;
+}
+
+.clarification-list {
   display: grid;
   gap: 8px;
   margin: 0;

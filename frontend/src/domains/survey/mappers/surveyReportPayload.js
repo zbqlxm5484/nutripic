@@ -1,6 +1,6 @@
 export function buildReportPayload(state, optionGroups = {}) {
   return {
-    age: state.age,
+    age: Number(state.age),
     gender: state.gender,
     health_goals: state.health_goals.map((code, index) => ({
       code,

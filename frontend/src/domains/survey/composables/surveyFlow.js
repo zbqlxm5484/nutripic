@@ -2,7 +2,7 @@ import { computed, reactive, ref } from 'vue'
 
 export function createInitialSurveyState() {
   return {
-    age: null,
+    age: '',
     gender: '',
     health_goals: [],
     medications: [],
@@ -45,6 +45,47 @@ export function toggleSelectedCode(currentValue, code, constraints = {}) {
 
 export function validateSurveyStep(step, state) {
   const value = state[step.field]
+
+  if (step.inputType === 'number') {
+    if (step.required && (value === '' || value === null || value === undefined)) {
+      return {
+        isValid: false,
+        message: `${step.title}을(를) 입력해 주세요.`,
+      }
+    }
+
+    const numericValue = Number(value)
+
+    if (!Number.isFinite(numericValue)) {
+      return {
+        isValid: false,
+        message: `${step.title}은(는) 숫자로 입력해 주세요.`,
+      }
+    }
+
+    if (step.min && numericValue < step.min) {
+      return {
+        isValid: false,
+        message: `${step.title}은(는) ${step.min} 이상이어야 합니다.`,
+      }
+    }
+
+    if (step.max && numericValue > step.max) {
+      return {
+        isValid: false,
+        message: `${step.title}은(는) ${step.max} 이하이어야 합니다.`,
+      }
+    }
+  }
+
+  if (step.inputType === 'single_select') {
+    if (step.required && !value) {
+      return {
+        isValid: false,
+        message: `${step.title}을(를) 선택해 주세요.`,
+      }
+    }
+  }
 
   if (step.inputType === 'multi_select') {
     const selectedCount = Array.isArray(value) ? value.length : 0

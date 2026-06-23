@@ -1,5 +1,5 @@
 <template>
-  <ReportLayout title="방금 생성된 추천 리포트">
+  <ReportLayout :title="report?.title || '방금 생성된 추천 리포트'">
     <template #actions>
       <div class="report-actions">
         <BaseButton to="/reports">목록 이동</BaseButton>
@@ -7,43 +7,112 @@
       </div>
     </template>
 
-    <ContentSection title-id="input-summary-title" title="사용자 입력 요약">
-      <p>API 연결 후 나이, 성별, 건강 목표, 복용 약, 특이사항 요약을 표시합니다.</p>
-    </ContentSection>
-
-    <ContentSection title-id="ingredient-list-title" title="핵심 추천 성분">
-      <p>추천 성분명, 추천 이유, 백엔드가 검증한 `iherb_url`이 있는 경우의 외부 링크를 표시합니다.</p>
-    </ContentSection>
-
-    <ContentSection title-id="detail-title" title="성분별 상세">
-      <dl class="summary-list">
-        <div>
-          <dt>추천 이유</dt>
-          <dd>API 연결 후 성분별 추천 이유를 표시합니다.</dd>
+    <ErrorState
+      v-if="!report"
+      title="생성된 리포트를 찾을 수 없습니다"
+      description="설문을 다시 제출하거나 저장된 리포트 목록에서 확인해 주세요."
+    >
+      <template #action>
+        <div class="report-actions">
+          <BaseButton to="/survey" size="sm">설문 시작</BaseButton>
+          <BaseButton to="/reports" size="sm">목록 이동</BaseButton>
         </div>
-        <div>
-          <dt>기능성</dt>
-          <dd>기능성 설명 영역입니다.</dd>
-        </div>
-        <div>
-          <dt>복용법 및 권장 용량</dt>
-          <dd>일일섭취량과 복용법 안내 영역입니다.</dd>
-        </div>
-        <div>
-          <dt>주의사항과 부작용 가능성</dt>
-          <dd>사용자 입력 조건과 연결된 안전 안내 영역입니다.</dd>
-        </div>
-      </dl>
-    </ContentSection>
+      </template>
+    </ErrorState>
 
-    <ContentSection title-id="lifestyle-title" title="생활 습관 관리 팁">
-      <ul>
-        <li>수면 시간과 카페인 섭취 시간을 함께 기록합니다.</li>
-        <li>피로가 지속되거나 악화되면 전문가 상담을 우선합니다.</li>
-      </ul>
-    </ContentSection>
+    <template v-else>
+      <ContentSection title-id="input-summary-title" title="사용자 입력 요약">
+        <dl class="summary-list">
+          <div>
+            <dt>나이</dt>
+            <dd>{{ report.input_summary?.age ?? '-' }}</dd>
+          </div>
+          <div>
+            <dt>성별</dt>
+            <dd>{{ formatGender(report.input_summary?.gender) }}</dd>
+          </div>
+          <div>
+            <dt>건강 목표</dt>
+            <dd>{{ formatList(report.input_summary?.health_goals) }}</dd>
+          </div>
+          <div>
+            <dt>복용 약</dt>
+            <dd>{{ formatList(report.input_summary?.medications) }}</dd>
+          </div>
+          <div>
+            <dt>특이사항</dt>
+            <dd>{{ formatList(report.input_summary?.special_conditions) }}</dd>
+          </div>
+          <div>
+            <dt>추가 정보</dt>
+            <dd>{{ report.input_summary?.additional_notes || '-' }}</dd>
+          </div>
+        </dl>
+      </ContentSection>
 
-    <MedicalDisclaimer />
+      <ContentSection title-id="ingredient-list-title" title="핵심 추천 성분">
+        <div v-if="recommendedIngredients.length === 0" class="empty-copy">
+          추천 성분이 없습니다.
+        </div>
+        <template v-else>
+          <article
+            v-for="ingredient in recommendedIngredients"
+            :key="ingredient.normalized_name || ingredient.name_ko || ingredient.name_en"
+            class="ingredient-card"
+          >
+            <h3>{{ ingredient.name_ko || ingredient.name_en }}</h3>
+            <p v-if="ingredient.name_en" class="ingredient-card__subtitle">{{ ingredient.name_en }}</p>
+            <dl class="summary-list">
+              <div>
+                <dt>추천 이유</dt>
+                <dd>{{ ingredient.reason || '-' }}</dd>
+              </div>
+              <div>
+                <dt>기능성</dt>
+                <dd>{{ formatList(ingredient.expected_effects) }}</dd>
+              </div>
+              <div>
+                <dt>복용법 및 권장 용량</dt>
+                <dd>{{ ingredient.recommended_dosage || '-' }}</dd>
+              </div>
+              <div>
+                <dt>부작용 가능성</dt>
+                <dd>{{ formatList(ingredient.side_effects) }}</dd>
+              </div>
+              <div>
+                <dt>주의사항</dt>
+                <dd>{{ formatList(ingredient.precautions) }}</dd>
+              </div>
+              <div v-if="ingredient.iherb_url">
+                <dt>검증된 성분 링크</dt>
+                <dd>
+                  <a :href="ingredient.iherb_url" target="_blank" rel="noreferrer">
+                    성분 정보 보기
+                  </a>
+                </dd>
+              </div>
+            </dl>
+          </article>
+        </template>
+      </ContentSection>
+
+      <ContentSection title-id="lifestyle-title" title="생활 습관 관리 팁">
+        <ul v-if="report.lifestyle_tips?.length">
+          <li v-for="tip in report.lifestyle_tips" :key="tip">{{ tip }}</li>
+        </ul>
+        <p v-else>생활 습관 관리 팁이 없습니다.</p>
+      </ContentSection>
+
+      <ContentSection v-if="report.citations?.length" title-id="citations-title" title="근거 출처">
+        <ul>
+          <li v-for="citation in report.citations" :key="`${citation.source_type}-${citation.document_id}`">
+            {{ citation.source_name || citation.document_id }}
+          </li>
+        </ul>
+      </ContentSection>
+
+      <MedicalDisclaimer :message="report.disclaimer" />
+    </template>
 
     <template #aside>
       <ReportChatPanel
@@ -57,11 +126,38 @@
 </template>
 
 <script setup>
-import { BaseButton, ContentSection, MedicalDisclaimer, ReportChatPanel, ReportLayout } from '../../../shared/components'
+import { computed, ref } from 'vue'
+import { BaseButton, ContentSection, ErrorState, MedicalDisclaimer, ReportChatPanel, ReportLayout } from '../../../shared/components'
+
+const report = ref(readLatestReport())
+const recommendedIngredients = computed(() => report.value?.recommended_ingredients ?? [])
 
 const chatMessages = [
-  { id: 'empty', text: '채팅 메시지 목록 영역' },
+  { id: 'empty', text: '채팅은 리포트 상세 API 연결 후 사용할 수 있습니다.' },
 ]
+
+function readLatestReport() {
+  try {
+    const rawReport = window.sessionStorage.getItem('neutripic:latest_report')
+    return rawReport ? JSON.parse(rawReport) : null
+  } catch {
+    return null
+  }
+}
+
+function formatList(value) {
+  return Array.isArray(value) && value.length > 0 ? value.join(', ') : '-'
+}
+
+function formatGender(value) {
+  const labels = {
+    female: '여성',
+    male: '남성',
+    other: '기타 또는 응답하지 않음',
+  }
+
+  return labels[value] ?? value ?? '-'
+}
 </script>
 
 <style scoped>
@@ -74,6 +170,28 @@ const chatMessages = [
 .summary-list div {
   display: grid;
   gap: 4px;
+}
+
+.ingredient-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #dde7e2;
+  border-radius: 8px;
+}
+
+.ingredient-card + .ingredient-card {
+  margin-top: 14px;
+}
+
+.ingredient-card h3,
+.ingredient-card__subtitle {
+  margin: 0;
+}
+
+.ingredient-card__subtitle,
+.empty-copy {
+  color: #5b6b65;
 }
 
 dt {
