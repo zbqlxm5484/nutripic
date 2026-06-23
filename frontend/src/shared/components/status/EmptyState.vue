@@ -1,14 +1,24 @@
 <template>
-  <section class="empty-state">
-    <p class="empty-state__title">{{ title }}</p>
-    <p v-if="description" class="empty-state__description">{{ description }}</p>
-    <div v-if="$slots.action" class="empty-state__action">
-      <slot name="action" />
-    </div>
-  </section>
+  <BaseStatus
+    class="u-panel u-panel--spacious u-panel--dashed u-text-center"
+    :title="title"
+    :description="description"
+  >
+    <template #default="{ title: statusTitle, description: statusDescription }">
+      <p class="u-text-title">{{ statusTitle }}</p>
+      <p v-if="statusDescription" class="empty-state__description u-text-muted u-measure">
+        {{ statusDescription }}
+      </p>
+      <div v-if="$slots.action" class="empty-state__action">
+        <slot name="action" />
+      </div>
+    </template>
+  </BaseStatus>
 </template>
 
 <script setup>
+import { BaseStatus } from '../headless'
+
 defineProps({
   title: {
     type: String,
@@ -22,25 +32,8 @@ defineProps({
 </script>
 
 <style scoped>
-.empty-state {
-  padding: 24px;
-  border: 1px dashed #c9d8d1;
-  border-radius: 8px;
-  background: #ffffff;
-  text-align: center;
-}
-
-.empty-state__title {
-  margin: 0;
-  color: #17231f;
-  font-weight: 700;
-}
-
 .empty-state__description {
   margin: 8px auto 0;
-  max-width: 520px;
-  color: #5b6b65;
-  line-height: 1.6;
 }
 
 .empty-state__action {

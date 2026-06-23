@@ -14,9 +14,9 @@
       </section>
 
       <div class="post-detail__actions">
-        <button type="button">추천</button>
-        <button type="button">수정</button>
-        <RouterLink to="/community">목록</RouterLink>
+        <BaseButton>추천</BaseButton>
+        <BaseButton>수정</BaseButton>
+        <BaseButton to="/community">목록</BaseButton>
       </div>
 
       <section class="comments" aria-labelledby="comments-title">
@@ -26,8 +26,8 @@
           <span>댓글 작성자 영역</span>
         </article>
         <form class="comment-form" aria-label="댓글 작성">
-          <textarea rows="4" placeholder="로그인 후 댓글을 작성할 수 있습니다." />
-          <button type="button">댓글 작성</button>
+          <textarea class="form-control" rows="4" placeholder="로그인 후 댓글을 작성할 수 있습니다." />
+          <BaseButton>댓글 작성</BaseButton>
         </form>
       </section>
     </article>
@@ -35,7 +35,7 @@
 </template>
 
 <script setup>
-import { AppLayout } from '../../../shared/components'
+import { AppLayout, BaseButton } from '../../../shared/components'
 </script>
 
 <style scoped>
@@ -84,22 +84,6 @@ import { AppLayout } from '../../../shared/components'
   gap: 10px;
 }
 
-.post-detail__actions button,
-.post-detail__actions a,
-.comment-form button {
-  display: inline-flex;
-  align-items: center;
-  min-height: 38px;
-  padding: 0 14px;
-  border: 1px solid #c9d8d1;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #165a46;
-  font: inherit;
-  font-weight: 700;
-  text-decoration: none;
-}
-
 .comments {
   display: grid;
   gap: 16px;
@@ -121,13 +105,7 @@ import { AppLayout } from '../../../shared/components'
   gap: 10px;
 }
 
-.comment-form textarea {
+.comment-form .form-control {
   width: 100%;
-  box-sizing: border-box;
-  padding: 12px;
-  border: 1px solid #c9d8d1;
-  border-radius: 8px;
-  font: inherit;
-  resize: vertical;
 }
 </style>

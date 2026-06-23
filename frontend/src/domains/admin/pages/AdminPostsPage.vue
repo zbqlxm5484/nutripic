@@ -1,11 +1,6 @@
 <template>
   <AdminLayout title="게시글 관리">
-    <section class="admin-table-panel" aria-labelledby="posts-title">
-      <header>
-        <h2 id="posts-title">게시글 목록</h2>
-        <p>게시글을 조회하고 운영 정책에 따라 삭제할 수 있습니다.</p>
-      </header>
-
+    <AdminTablePanel title="게시글 목록" description="게시글을 조회하고 운영 정책에 따라 삭제할 수 있습니다." title-id="posts-title">
       <table>
         <thead>
           <tr>
@@ -22,41 +17,19 @@
             <td>작성자 영역</td>
             <td>댓글 수 영역</td>
             <td>추천 수 영역</td>
-            <td><button type="button">삭제</button></td>
+            <td><BaseButton size="sm" variant="danger">삭제</BaseButton></td>
           </tr>
         </tbody>
       </table>
-    </section>
+    </AdminTablePanel>
   </AdminLayout>
 </template>
 
 <script setup>
-import { AdminLayout } from '../../../shared/components'
+import { AdminLayout, AdminTablePanel, BaseButton } from '../../../shared/components'
 </script>
 
 <style scoped>
-.admin-table-panel {
-  overflow-x: auto;
-  padding: 24px;
-  border: 1px solid #dde7e2;
-  border-radius: 8px;
-  background: #ffffff;
-}
-
-header {
-  margin-bottom: 16px;
-}
-
-h2 {
-  margin: 0 0 8px;
-  font-size: 1.25rem;
-}
-
-p {
-  margin: 0;
-  color: #5b6b65;
-}
-
 table {
   width: 100%;
   border-collapse: collapse;
@@ -73,16 +46,5 @@ td {
 th {
   color: #5b6b65;
   font-size: 0.875rem;
-}
-
-button {
-  min-height: 34px;
-  padding: 0 12px;
-  border: 1px solid #efc8c2;
-  border-radius: 8px;
-  background: #fff7f5;
-  color: #8f2f23;
-  font: inherit;
-  font-weight: 700;
 }
 </style>

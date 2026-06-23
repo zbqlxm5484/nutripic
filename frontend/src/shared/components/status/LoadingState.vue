@@ -1,11 +1,23 @@
 <template>
-  <section class="status-state" role="status" aria-live="polite">
-    <p class="status-state__label">{{ label }}</p>
-    <p v-if="description" class="status-state__description">{{ description }}</p>
-  </section>
+  <BaseStatus
+    class="u-panel"
+    role="status"
+    aria-live="polite"
+    :label="label"
+    :description="description"
+  >
+    <template #default="{ title, description: statusDescription }">
+      <p class="u-text-title">{{ title }}</p>
+      <p v-if="statusDescription" class="status-state__description u-text-muted">
+        {{ statusDescription }}
+      </p>
+    </template>
+  </BaseStatus>
 </template>
 
 <script setup>
+import { BaseStatus } from '../headless'
+
 defineProps({
   label: {
     type: String,
@@ -19,22 +31,7 @@ defineProps({
 </script>
 
 <style scoped>
-.status-state {
-  padding: 20px;
-  border: 1px solid #dde7e2;
-  border-radius: 8px;
-  background: #ffffff;
-}
-
-.status-state__label {
-  margin: 0;
-  color: #17231f;
-  font-weight: 700;
-}
-
 .status-state__description {
   margin: 8px 0 0;
-  color: #5b6b65;
-  line-height: 1.6;
 }
 </style>

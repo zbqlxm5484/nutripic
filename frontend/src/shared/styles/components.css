@@ -1,0 +1,45 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-brand);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.button--primary {
+  border-color: var(--color-brand);
+  background: var(--color-brand);
+  color: var(--color-surface);
+}
+
+.button--danger {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-surface);
+  color: var(--color-danger-text);
+}
+
+.button--sm {
+  min-height: 34px;
+  padding: 0 12px;
+}
+
+.form-control {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font: inherit;
+}
+
+textarea.form-control {
+  padding-top: 12px;
+  resize: vertical;
+}

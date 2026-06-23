@@ -7,7 +7,7 @@
           <h1 id="community-title">건강 고민과 영양제 경험 공유</h1>
           <span>목록과 상세 조회는 비회원도 가능하며, 작성과 댓글은 로그인이 필요합니다.</span>
         </div>
-        <RouterLink class="button button--primary" to="/community/new">게시글 작성</RouterLink>
+        <BaseButton to="/community/new" variant="primary">게시글 작성</BaseButton>
       </header>
 
       <form class="search-bar" aria-label="게시글 검색">
@@ -16,7 +16,7 @@
           <option value="latest">최신순</option>
           <option value="popular">추천순</option>
         </select>
-        <button type="button">검색</button>
+        <BaseButton>검색</BaseButton>
       </form>
 
       <EmptyState
@@ -28,7 +28,7 @@
 </template>
 
 <script setup>
-import { AppLayout, EmptyState } from '../../../shared/components'
+import { AppLayout, BaseButton, EmptyState } from '../../../shared/components'
 </script>
 
 <style scoped>
@@ -107,28 +107,6 @@ import { AppLayout, EmptyState } from '../../../shared/components'
 
 a {
   color: #165a46;
-}
-
-.button,
-.search-bar button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid #c9d8d1;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #165a46;
-  font: inherit;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.button--primary {
-  border-color: #165a46;
-  background: #165a46;
-  color: #ffffff;
 }
 
 @media (max-width: 760px) {

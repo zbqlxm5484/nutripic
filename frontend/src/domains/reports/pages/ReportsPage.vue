@@ -7,7 +7,7 @@
           <h1 id="reports-title">저장된 리포트</h1>
           <span>생성일, 건강 목표, 주요 추천 성분을 기준으로 최근 리포트를 확인합니다.</span>
         </div>
-        <RouterLink class="button button--primary" to="/survey">다시 설문하기</RouterLink>
+        <BaseButton to="/survey" variant="primary">다시 설문하기</BaseButton>
       </header>
 
       <EmptyState
@@ -15,7 +15,7 @@
         description="API 연결 후 생성일, 건강 목표, 주요 추천 성분, 상세 보기, 제목 수정, 삭제 액션을 표시합니다."
       >
         <template #action>
-          <RouterLink class="button" to="/survey">추천 설문 시작</RouterLink>
+          <BaseButton to="/survey">추천 설문 시작</BaseButton>
         </template>
       </EmptyState>
     </section>
@@ -23,7 +23,7 @@
 </template>
 
 <script setup>
-import { AppLayout, EmptyState } from '../../../shared/components'
+import { AppLayout, BaseButton, EmptyState } from '../../../shared/components'
 </script>
 
 <style scoped>
@@ -54,35 +54,6 @@ import { AppLayout, EmptyState } from '../../../shared/components'
   display: block;
   margin-top: 8px;
   color: #5b6b65;
-}
-
-.button {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.button {
-  align-items: center;
-  min-height: 38px;
-  padding: 0 14px;
-  border: 1px solid #c9d8d1;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #165a46;
-  font: inherit;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.button {
-  display: inline-flex;
-}
-
-.button--primary {
-  border-color: #165a46;
-  background: #165a46;
-  color: #ffffff;
 }
 
 @media (max-width: 720px) {

@@ -7,8 +7,8 @@
         건강 목표, 복용 약, 특이사항을 바탕으로 제품이 아닌 성분 중심의 개인화 리포트를 제공합니다.
       </p>
       <div class="hero-section__actions">
-        <RouterLink class="button button--primary" to="/login?redirect_to=/survey">추천 시작</RouterLink>
-        <RouterLink class="button" to="/community">커뮤니티 보기</RouterLink>
+        <BaseButton to="/login?redirect_to=/survey" variant="primary">추천 시작</BaseButton>
+        <BaseButton to="/community">커뮤니티 보기</BaseButton>
       </div>
     </section>
 
@@ -44,13 +44,13 @@
         <h2 id="community-title">커뮤니티</h2>
         <p>건강 고민과 영양제 경험을 공유하는 공간입니다. 목록과 상세 조회는 비회원도 가능합니다.</p>
       </div>
-      <RouterLink class="button" to="/community">게시글 보러가기</RouterLink>
+      <BaseButton to="/community">게시글 보러가기</BaseButton>
     </section>
   </AppLayout>
 </template>
 
 <script setup>
-import { AppLayout, SafetyNotice } from '../shared/components'
+import { AppLayout, BaseButton, SafetyNotice } from '../shared/components'
 </script>
 
 <style scoped>
@@ -86,25 +86,6 @@ import { AppLayout, SafetyNotice } from '../shared/components'
   flex-wrap: wrap;
   gap: 12px;
   align-items: center;
-}
-
-.button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  padding: 0 16px;
-  border: 1px solid #b9cbc3;
-  border-radius: 8px;
-  color: #165a46;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.button--primary {
-  border-color: #165a46;
-  background: #165a46;
-  color: #ffffff;
 }
 
 .section-grid {

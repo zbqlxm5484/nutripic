@@ -2,8 +2,8 @@
   <ReportLayout title="방금 생성된 추천 리포트">
     <template #actions>
       <div class="report-actions">
-        <RouterLink to="/reports">목록 이동</RouterLink>
-        <RouterLink to="/survey">다시 설문</RouterLink>
+        <BaseButton to="/reports">목록 이동</BaseButton>
+        <BaseButton to="/survey">다시 설문</BaseButton>
       </div>
     </template>
 
@@ -55,14 +55,14 @@
         <p>리포트에 포함된 성분, 복용법, 부작용, 주의사항 범위 안에서 질문할 수 있습니다.</p>
         <div class="chat-message">채팅 메시지 목록 영역</div>
         <textarea rows="4" placeholder="리포트 내용에 대해 질문하세요." />
-        <button type="button">질문 보내기</button>
+        <BaseButton variant="primary">질문 보내기</BaseButton>
       </section>
     </template>
   </ReportLayout>
 </template>
 
 <script setup>
-import { MedicalDisclaimer, ReportLayout } from '../../../shared/components'
+import { BaseButton, MedicalDisclaimer, ReportLayout } from '../../../shared/components'
 </script>
 
 <style scoped>
@@ -108,11 +108,6 @@ dd {
   padding-left: 20px;
 }
 
-.report-actions a {
-  color: #165a46;
-  font-weight: 700;
-}
-
 .report-section p,
 .chat-panel p {
   color: #5b6b65;
@@ -123,18 +118,6 @@ dd {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-}
-
-.report-actions a,
-.chat-panel button {
-  display: inline-flex;
-  align-items: center;
-  min-height: 38px;
-  padding: 0 14px;
-  border: 1px solid #c9d8d1;
-  border-radius: 8px;
-  background: #ffffff;
-  text-decoration: none;
 }
 
 .chat-panel {
@@ -159,12 +142,4 @@ dd {
   resize: vertical;
 }
 
-.chat-panel button {
-  justify-content: center;
-  border-color: #165a46;
-  background: #165a46;
-  color: #ffffff;
-  font: inherit;
-  font-weight: 700;
-}
 </style>
