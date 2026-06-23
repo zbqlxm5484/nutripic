@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import HealthGoal, MedicationOption, Report, SpecialConditionOption
+from .models import HealthGoal, MedicationOption, Report, ReportMessage, SpecialConditionOption
 
 
 class HealthGoalSerializer(serializers.ModelSerializer):
@@ -19,6 +19,7 @@ class SpecialConditionOptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = SpecialConditionOption
         fields = ['code', 'name']
+
 
 class ReportHealthGoalInputSerializer(serializers.Serializer):
     code = serializers.CharField()
@@ -127,3 +128,36 @@ class ReportTitleUpdateSerializer(serializers.ModelSerializer):
         model = Report
         fields = ['id', 'title']
         read_only_fields = ['id']
+
+
+class ReportMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReportMessage
+        fields = [
+            'id',
+            'role',
+            'content',
+            'guardrail_result',
+            'citations',
+            'created_at',
+        ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        if instance.role == ReportMessage.ROLE_USER:
+            data.pop('guardrail_result', None)
+            data.pop('citations', None)
+
+        if instance.role == ReportMessage.ROLE_ASSISTANT and not data.get('guardrail_result'):
+            data.pop('guardrail_result', None)
+
+        return data
+
+
+class ReportMessageCreateSerializer(serializers.Serializer):
+    content = serializers.CharField(
+        allow_blank=False,
+        trim_whitespace=True,
+        max_length=2000,
+    )

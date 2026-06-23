@@ -49,3 +49,36 @@ def generate_report(request_data):
             }
         ],
     }
+
+def generate_report_chat_response(report, content):
+    # TODO: AI/RAG 서버가 준비되면 아래 mock 응답 대신 실제 내부 API 호출로 교체한다.
+    # response = requests.post(
+    #     AI_CHAT_SERVER_URL,
+    #     json={
+    #         'report_id': report.id,
+    #         'report': {
+    #             'title': report.title,
+    #             'input_summary': report.input_summary,
+    #             'recommended_ingredients': report.recommended_ingredients,
+    #             'citations': report.citations,
+    #         },
+    #         'content': content,
+    #     },
+    #     timeout=30,
+    # )
+    # response.raise_for_status()
+    # return response.json()
+
+    return {
+        'role': 'assistant',
+        'content': (
+            '일반적으로 리포트에 포함된 성분은 개인의 건강 상태와 복용 중인 약을 '
+            '함께 고려해 섭취 여부를 판단하는 것이 좋습니다. 질환이 있거나 약을 '
+            '복용 중인 경우 전문가와 상담하세요.'
+        ),
+        'guardrail_result': {
+            'is_allowed': True,
+            'risk_level': 'low',
+        },
+        'citations': report.citations,
+    }
