@@ -6,24 +6,32 @@
       <span>게시글 작성과 수정은 로그인 상태에서만 가능합니다.</span>
     </header>
 
-    <BaseForm aria-label="커뮤니티 게시글 폼">
-      <FormField label="카테고리">
-        <select class="form-control" name="category">
-          <option value="sleep">수면</option>
-          <option value="fatigue">피로</option>
-          <option value="immune">면역</option>
-          <option value="etc">기타</option>
-        </select>
-      </FormField>
+    <BaseForm aria-label="커뮤니티 게시글 폼" @submit.prevent="handleSubmit">
       <FormField label="제목">
-        <input class="form-control" type="text" name="title" placeholder="제목을 입력하세요" />
+        <input
+          v-model.trim="form.title"
+          class="form-control"
+          type="text"
+          name="title"
+          placeholder="제목을 입력하세요"
+          :disabled="isSubmitting"
+        />
       </FormField>
       <FormField label="내용">
-        <textarea class="form-control" rows="10" name="content" placeholder="건강 고민이나 영양제 경험을 공유하세요." />
+        <textarea
+          v-model.trim="form.content"
+          class="form-control"
+          rows="10"
+          name="content"
+          placeholder="건강 고민이나 영양제 경험을 공유하세요."
+          :disabled="isSubmitting"
+        />
       </FormField>
-      <FormErrorMessage message="" />
+      <FormErrorMessage :message="errorMessage" />
       <FormActions>
-        <BaseButton variant="primary">{{ submitLabel }}</BaseButton>
+        <BaseButton variant="primary" type="submit" :disabled="isSubmitting">
+          {{ isSubmitting ? '처리 중' : submitLabel }}
+        </BaseButton>
         <BaseButton to="/community">취소</BaseButton>
       </FormActions>
     </BaseForm>
@@ -31,7 +39,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { BaseButton, BaseForm, FormActions, FormErrorMessage, FormField } from '../../../shared/components'
 
 const props = defineProps({
@@ -43,9 +51,44 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  initialPost: {
+    type: Object,
+    default: null,
+  },
+  errorMessage: {
+    type: String,
+    default: '',
+  },
+  isSubmitting: {
+    type: Boolean,
+    default: false,
+  },
+})
+
+const emit = defineEmits(['submit'])
+
+const form = reactive({
+  title: '',
+  content: '',
 })
 
 const titleId = computed(() => `community-form-${props.title.replace(/\s+/g, '-').toLowerCase()}`)
+
+watch(
+  () => props.initialPost,
+  (post) => {
+    form.title = post?.title || ''
+    form.content = post?.content || ''
+  },
+  { immediate: true },
+)
+
+function handleSubmit() {
+  emit('submit', {
+    title: form.title,
+    content: form.content,
+  })
+}
 </script>
 
 <style scoped>

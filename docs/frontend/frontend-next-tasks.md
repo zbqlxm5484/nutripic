@@ -317,7 +317,7 @@ Status: Done
 
 Priority: Medium
 
-Status: Pending
+Status: Done
 
 ### Goal
 
@@ -325,12 +325,19 @@ Status: Pending
 
 ### Checklist
 
-- [ ] 게시글 목록 조회 API를 연결한다.
-- [ ] 최신순/추천순 정렬 query를 연결한다.
-- [ ] 페이지네이션 정책을 정한다.
-- [ ] 목록 로딩, 빈 목록, 실패 상태를 표시한다.
-- [ ] 게시글 상세 조회 API를 연결한다.
-- [ ] 댓글/답글 목록 조회 API를 연결한다.
+- [x] 게시글 목록 조회 API를 연결한다.
+- [x] 최신순/추천순 정렬 query를 연결한다.
+- [x] 페이지네이션 정책을 정한다.
+- [x] 목록 로딩, 빈 목록, 실패 상태를 표시한다.
+- [x] 게시글 상세 조회 API를 연결한다.
+- [x] 댓글/답글 목록 조회 API를 연결한다.
+
+### Implementation Notes
+
+- `/community`는 `GET /api/v1/posts/` 응답의 `results`를 렌더링하고 `ordering=latest|likes`, `page` query를 라우트 query와 동기화한다.
+- 페이지네이션은 DRF `PageNumberPagination` 응답의 `next`와 현재 page query를 기준으로 이전/다음 버튼을 제공한다.
+- `/community/:post_id`는 게시글 상세와 댓글/답글 목록을 각각 조회하고 로딩/빈/실패 상태를 분리해 표시한다.
+- 댓글 작성, 추천, 수정/삭제 액션은 다음 커뮤니티 액션 연결 작업에서 처리한다.
 
 ### Success Criteria
 
@@ -357,7 +364,7 @@ Status: Pending
 
 Priority: Medium
 
-Status: Pending
+Status: Done
 
 ### Goal
 
@@ -365,15 +372,23 @@ Status: Pending
 
 ### Checklist
 
-- [ ] 게시글 작성 API를 연결한다.
-- [ ] 게시글 수정 API를 연결한다.
-- [ ] 게시글 삭제 API를 연결한다.
-- [ ] 게시글 추천/추천 취소 API를 연결한다.
-- [ ] 댓글/답글 작성 API를 연결한다.
-- [ ] 댓글/답글 수정 API를 연결한다.
-- [ ] 댓글/답글 삭제 API를 연결한다.
-- [ ] 비로그인 액션 시 `/login?redirect_to=...` 이동을 적용한다.
-- [ ] 본인 글/댓글이 아닌 경우 수정/삭제 액션 노출 정책을 정한다.
+- [x] 게시글 작성 API를 연결한다.
+- [x] 게시글 수정 API를 연결한다.
+- [x] 게시글 삭제 API를 연결한다.
+- [x] 게시글 추천/추천 취소 API를 연결한다.
+- [x] 댓글/답글 작성 API를 연결한다.
+- [x] 댓글/답글 수정 API를 연결한다.
+- [x] 댓글/답글 삭제 API를 연결한다.
+- [x] 비로그인 액션 시 `/login?redirect_to=...` 이동을 적용한다.
+- [x] 본인 글/댓글이 아닌 경우 수정/삭제 액션 노출 정책을 정한다.
+
+### Implementation Notes
+
+- 게시글 작성/수정 폼은 백엔드 계약에 맞춰 `title`, `content`만 전송한다.
+- 게시글 상세에서 로그인 사용자는 추천/추천 취소, 댓글/답글 작성이 가능하다.
+- 게시글/댓글/답글 수정과 삭제는 현재 로그인 사용자 id가 작성자 id와 같을 때만 노출한다.
+- 비로그인 사용자가 추천, 댓글, 답글 작성 액션을 시도하면 현재 경로를 `redirect_to`로 담아 로그인 페이지로 이동한다.
+- 댓글/답글 수정은 `window.prompt`, 삭제 확인은 `window.confirm`으로 연결했다. 별도 모달 UX가 필요하면 추후 공용 확인 컴포넌트를 도입한다.
 
 ### Success Criteria
 
@@ -502,7 +517,7 @@ Status: Pending
 
 ## Verification Checklist
 
-- [ ] `npm run build`가 성공한다.
+- [x] `npm run build`가 성공한다.
 - [ ] 비로그인 보호 라우트 접근 시 로그인 페이지로 이동한다.
 - [ ] 로그인 성공 후 `redirect_to` 경로로 복귀한다.
 - [ ] 백엔드 API request/response field는 snake_case를 유지한다.
