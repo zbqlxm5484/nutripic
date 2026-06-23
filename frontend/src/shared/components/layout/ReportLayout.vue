@@ -1,13 +1,9 @@
 <template>
   <AppLayout>
     <section class="report-layout" aria-labelledby="report-layout-title">
-      <header class="report-layout__header">
-        <div>
-          <p class="report-layout__eyebrow">추천 리포트</p>
-          <h1 id="report-layout-title">{{ title }}</h1>
-        </div>
+      <PageHeader class="report-layout__header" title-id="report-layout-title" eyebrow="추천 리포트" :title="title">
         <slot name="actions" />
-      </header>
+      </PageHeader>
       <div class="report-layout__content">
         <article class="report-layout__main">
           <slot />
@@ -22,6 +18,7 @@
 
 <script setup>
 import AppLayout from './AppLayout.vue'
+import PageHeader from './PageHeader.vue'
 
 defineProps({
   title: {
@@ -33,22 +30,7 @@ defineProps({
 
 <style scoped>
 .report-layout__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
   margin-bottom: 28px;
-}
-
-.report-layout__eyebrow {
-  margin: 0 0 8px;
-  color: #4e6f61;
-  font-weight: 700;
-}
-
-.report-layout__header h1 {
-  margin: 0;
-  font-size: 2rem;
 }
 
 .report-layout__content {

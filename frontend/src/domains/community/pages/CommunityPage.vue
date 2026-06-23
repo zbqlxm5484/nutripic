@@ -1,18 +1,20 @@
 <template>
   <AppLayout>
     <section class="community-page" aria-labelledby="community-title">
-      <header class="community-page__header">
-        <div>
-          <p>커뮤니티</p>
-          <h1 id="community-title">건강 고민과 영양제 경험 공유</h1>
-          <span>목록과 상세 조회는 비회원도 가능하며, 작성과 댓글은 로그인이 필요합니다.</span>
-        </div>
+      <PageHeader
+        title-id="community-title"
+        eyebrow="커뮤니티"
+        title="건강 고민과 영양제 경험 공유"
+        description="목록과 상세 조회는 비회원도 가능하며, 작성과 댓글은 로그인이 필요합니다."
+      >
+        <template #actions>
         <BaseButton to="/community/new" variant="primary">게시글 작성</BaseButton>
-      </header>
+        </template>
+      </PageHeader>
 
       <form class="search-bar" aria-label="게시글 검색">
-        <input type="search" name="search" placeholder="검색어 입력" />
-        <select name="sort">
+        <input class="form-control" type="search" name="search" placeholder="검색어 입력" />
+        <select class="form-control" name="sort">
           <option value="latest">최신순</option>
           <option value="popular">추천순</option>
         </select>
@@ -28,7 +30,7 @@
 </template>
 
 <script setup>
-import { AppLayout, BaseButton, EmptyState } from '../../../shared/components'
+import { AppLayout, BaseButton, EmptyState, PageHeader } from '../../../shared/components'
 </script>
 
 <style scoped>
@@ -37,25 +39,6 @@ import { AppLayout, BaseButton, EmptyState } from '../../../shared/components'
   gap: 20px;
 }
 
-.community-page__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-}
-
-.community-page__header p {
-  margin: 0 0 8px;
-  color: #4e6f61;
-  font-weight: 700;
-}
-
-.community-page__header h1 {
-  margin: 0;
-  font-size: 2rem;
-}
-
-.community-page__header span,
 .post-card span {
   display: block;
   margin-top: 8px;
@@ -70,16 +53,6 @@ import { AppLayout, BaseButton, EmptyState } from '../../../shared/components'
   border: 1px solid #dde7e2;
   border-radius: 8px;
   background: #ffffff;
-}
-
-.search-bar input,
-.search-bar select {
-  min-height: 40px;
-  padding: 0 12px;
-  border: 1px solid #c9d8d1;
-  border-radius: 8px;
-  background: #ffffff;
-  font: inherit;
 }
 
 .post-list {
@@ -110,13 +83,8 @@ a {
 }
 
 @media (max-width: 760px) {
-  .community-page__header,
   .search-bar {
     grid-template-columns: 1fr;
-  }
-
-  .community-page__header {
-    flex-direction: column;
   }
 }
 </style>

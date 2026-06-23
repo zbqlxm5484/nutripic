@@ -1,11 +1,13 @@
 <template>
   <AppLayout>
     <section class="survey-layout" aria-labelledby="survey-layout-title">
-      <header class="survey-layout__header">
-        <p class="survey-layout__eyebrow">추천 설문</p>
-        <h1 id="survey-layout-title">{{ title }}</h1>
-        <p>{{ description }}</p>
-      </header>
+      <PageHeader
+        class="survey-layout__header"
+        title-id="survey-layout-title"
+        eyebrow="추천 설문"
+        :title="title"
+        :description="description"
+      />
       <div class="survey-layout__body">
         <slot />
       </div>
@@ -15,6 +17,7 @@
 
 <script setup>
 import AppLayout from './AppLayout.vue'
+import PageHeader from './PageHeader.vue'
 
 defineProps({
   title: {
@@ -31,23 +34,6 @@ defineProps({
 <style scoped>
 .survey-layout__header {
   margin-bottom: 28px;
-}
-
-.survey-layout__eyebrow {
-  margin: 0 0 8px;
-  color: #4e6f61;
-  font-weight: 700;
-}
-
-.survey-layout__header h1 {
-  margin: 0;
-  font-size: 2rem;
-}
-
-.survey-layout__header p:last-child {
-  max-width: 680px;
-  color: #5b6b65;
-  line-height: 1.6;
 }
 
 .survey-layout__body {

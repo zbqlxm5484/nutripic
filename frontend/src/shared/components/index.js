@@ -1,4 +1,5 @@
 export * from './base'
+export * from './chat'
 export * from './data'
 export * from './form'
 export * from './headless'

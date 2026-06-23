@@ -1,10 +1,7 @@
 <template>
   <AppLayout>
     <section class="admin-layout" aria-labelledby="admin-layout-title">
-      <header class="admin-layout__header">
-        <p class="admin-layout__eyebrow">관리자</p>
-        <h1 id="admin-layout-title">{{ title }}</h1>
-      </header>
+      <PageHeader class="admin-layout__header" title-id="admin-layout-title" eyebrow="관리자" :title="title" />
       <nav class="admin-layout__nav" aria-label="관리자 메뉴">
         <RouterLink to="/admin">대시보드</RouterLink>
         <RouterLink to="/admin/users">회원 관리</RouterLink>
@@ -20,6 +17,7 @@
 
 <script setup>
 import AppLayout from './AppLayout.vue'
+import PageHeader from './PageHeader.vue'
 
 defineProps({
   title: {
@@ -32,17 +30,6 @@ defineProps({
 <style scoped>
 .admin-layout__header {
   margin-bottom: 20px;
-}
-
-.admin-layout__eyebrow {
-  margin: 0 0 8px;
-  color: #4e6f61;
-  font-weight: 700;
-}
-
-.admin-layout__header h1 {
-  margin: 0;
-  font-size: 2rem;
 }
 
 .admin-layout__nav {
