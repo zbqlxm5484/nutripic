@@ -23,6 +23,7 @@ urlpatterns = [
     path('api/v1/auth/', include('users.urls.auth_urls')),
     path('api/v1/users/', include('users.urls.users_urls')),
     path('api/v1/mypage/', MyPageView.as_view(), name='mypage'),
+    path('api/v1/', include('reports.metadata_urls')),
     path('api/v1/reports/', include('reports.urls')),
     path('api/v1/', include('community.urls')),
     path('api/v1/admin/', include('admin_panel.urls')),

@@ -133,7 +133,15 @@ Response `200`:
 
 ### POST `/api/v1/auth/logout/`
 
-로그아웃. 클라이언트는 보관 중인 토큰을 삭제한다.
+로그아웃. 백엔드는 전달받은 refresh token을 무효화하고, 클라이언트는 보관 중인 토큰을 삭제한다.
+
+Request:
+
+```json
+{
+  "refresh_token": "jwt_refresh_token"
+}
+```
 
 Response `204`
 
