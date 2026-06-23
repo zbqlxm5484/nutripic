@@ -1,0 +1,55 @@
+.u-stack-sm > * + * {
+  margin-top: var(--space-2);
+}
+
+.u-stack-md > * + * {
+  margin-top: var(--space-4);
+}
+
+.u-panel {
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.u-panel--spacious {
+  padding: var(--space-6);
+}
+
+.u-panel--dashed {
+  border-style: dashed;
+  border-color: var(--color-border-strong);
+}
+
+.u-panel--danger {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-surface);
+}
+
+.u-text-center {
+  text-align: center;
+}
+
+.u-text-title {
+  margin: 0;
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.u-text-muted {
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.u-text-danger {
+  color: var(--color-danger-text);
+}
+
+.u-text-danger-muted {
+  color: var(--color-danger-muted);
+}
+
+.u-measure {
+  max-width: var(--content-measure);
+}

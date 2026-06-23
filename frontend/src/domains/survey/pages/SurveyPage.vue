@@ -73,15 +73,15 @@
     <SafetyNotice />
 
     <div class="action-bar" aria-label="설문 이동">
-      <button type="button">이전</button>
-      <button type="button">다음</button>
-      <RouterLink class="action-bar__primary" to="/reports/generating">리포트 생성 요청</RouterLink>
+      <BaseButton>이전</BaseButton>
+      <BaseButton>다음</BaseButton>
+      <BaseButton to="/reports/generating" variant="primary">리포트 생성 요청</BaseButton>
     </div>
   </SurveyLayout>
 </template>
 
 <script setup>
-import { SafetyNotice, SurveyLayout } from '../../../shared/components'
+import { BaseButton, SafetyNotice, SurveyLayout } from '../../../shared/components'
 
 const healthGoals = ['피로', '수면', '눈 건강', '장 건강', '면역', '피부', '스트레스', '혈행', '관절', '기억력']
 const medications = ['고혈압약', '당뇨약', '항응고제', '항우울제', '피임약', '진통소염제', '위장약', '갑상선약']
@@ -171,24 +171,4 @@ textarea {
   justify-content: flex-end;
 }
 
-.action-bar button,
-.action-bar__primary {
-  display: inline-flex;
-  align-items: center;
-  min-height: 40px;
-  padding: 0 16px;
-  border: 1px solid #b9cbc3;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #165a46;
-  font: inherit;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.action-bar__primary {
-  border-color: #165a46;
-  background: #165a46;
-  color: #ffffff;
-}
 </style>

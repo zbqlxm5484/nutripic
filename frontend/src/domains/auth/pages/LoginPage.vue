@@ -6,18 +6,16 @@
   >
     <RedirectNotice />
 
-    <form class="auth-form" aria-label="로그인 폼">
-      <label>
-        아이디 또는 이메일
-        <input type="text" name="login_id" autocomplete="username" placeholder="아이디 또는 이메일" />
-      </label>
-      <label>
-        비밀번호
-        <input type="password" name="password" autocomplete="current-password" placeholder="비밀번호" />
-      </label>
+    <BaseForm aria-label="로그인 폼">
+      <FormField label="아이디 또는 이메일">
+        <input class="form-control" type="text" name="login_id" autocomplete="username" placeholder="아이디 또는 이메일" />
+      </FormField>
+      <FormField label="비밀번호">
+        <input class="form-control" type="password" name="password" autocomplete="current-password" placeholder="비밀번호" />
+      </FormField>
       <FormErrorMessage message="" />
-      <button type="button">로그인</button>
-    </form>
+      <BaseButton class="auth-submit" variant="primary">로그인</BaseButton>
+    </BaseForm>
 
     <p class="auth-link">
       아직 계정이 없나요?
@@ -27,7 +25,7 @@
 </template>
 
 <script setup>
-import { AuthLayout, FormErrorMessage } from '../../../shared/components'
+import { AuthLayout, BaseButton, BaseForm, FormErrorMessage, FormField } from '../../../shared/components'
 
 const RedirectNotice = {
   template: `
@@ -47,34 +45,8 @@ const RedirectNotice = {
   color: #31443d;
 }
 
-.auth-form {
-  display: grid;
-  gap: 16px;
-}
-
-.auth-form label {
-  display: grid;
-  gap: 8px;
-  color: #31443d;
-  font-weight: 700;
-}
-
-.auth-form input {
-  min-height: 42px;
-  padding: 0 12px;
-  border: 1px solid #c9d8d1;
-  border-radius: 8px;
-  font: inherit;
-}
-
-.auth-form button {
+.auth-submit {
   min-height: 44px;
-  border: 0;
-  border-radius: 8px;
-  background: #165a46;
-  color: #ffffff;
-  font: inherit;
-  font-weight: 700;
 }
 
 .auth-link {

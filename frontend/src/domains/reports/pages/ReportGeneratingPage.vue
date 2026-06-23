@@ -29,8 +29,8 @@
       >
         <template #action>
           <div class="error-actions">
-            <RouterLink to="/reports/generating">재시도</RouterLink>
-            <RouterLink to="/survey">설문 수정</RouterLink>
+            <BaseButton to="/reports/generating" size="sm">재시도</BaseButton>
+            <BaseButton to="/survey" size="sm">설문 수정</BaseButton>
           </div>
         </template>
       </ErrorState>
@@ -41,7 +41,7 @@
 </template>
 
 <script setup>
-import { AppLayout, ErrorState, LoadingState, SafetyNotice } from '../../../shared/components'
+import { AppLayout, BaseButton, ErrorState, LoadingState, SafetyNotice } from '../../../shared/components'
 </script>
 
 <style scoped>
@@ -110,15 +110,4 @@ import { AppLayout, ErrorState, LoadingState, SafetyNotice } from '../../../shar
   gap: 10px;
 }
 
-.error-actions a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 36px;
-  padding: 0 14px;
-  border: 1px solid #c9d8d1;
-  border-radius: 8px;
-  color: #165a46;
-  font-weight: 700;
-  text-decoration: none;
-}
 </style>

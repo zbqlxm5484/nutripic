@@ -1,14 +1,25 @@
 <template>
-  <section class="error-state" role="alert">
-    <p class="error-state__title">{{ title }}</p>
-    <p v-if="description" class="error-state__description">{{ description }}</p>
-    <div v-if="$slots.action" class="error-state__action">
-      <slot name="action" />
-    </div>
-  </section>
+  <BaseStatus
+    class="u-panel u-panel--danger"
+    role="alert"
+    :title="title"
+    :description="description"
+  >
+    <template #default="{ title: statusTitle, description: statusDescription }">
+      <p class="u-text-title u-text-danger">{{ statusTitle }}</p>
+      <p v-if="statusDescription" class="error-state__description u-text-danger-muted">
+        {{ statusDescription }}
+      </p>
+      <div v-if="$slots.action" class="error-state__action">
+        <slot name="action" />
+      </div>
+    </template>
+  </BaseStatus>
 </template>
 
 <script setup>
+import { BaseStatus } from '../headless'
+
 defineProps({
   title: {
     type: String,
@@ -22,22 +33,8 @@ defineProps({
 </script>
 
 <style scoped>
-.error-state {
-  padding: 20px;
-  border: 1px solid #efc8c2;
-  border-radius: 8px;
-  background: #fff7f5;
-}
-
-.error-state__title {
-  margin: 0;
-  color: #8f2f23;
-  font-weight: 700;
-}
-
 .error-state__description {
   margin: 8px 0 0;
-  color: #6f3f38;
   line-height: 1.6;
 }
 
