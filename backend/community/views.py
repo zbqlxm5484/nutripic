@@ -1,7 +1,7 @@
 from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.pagination import CursorPagination, PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -23,6 +23,13 @@ class CommunityPagination(PageNumberPagination):
     max_page_size = 100
 
 
+class PostCursorPagination(CursorPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+    ordering = ('-created_at', '-id')
+
+
 class PostListCreateView(generics.ListCreateAPIView):
     pagination_class = CommunityPagination
     http_method_names = ['get', 'post', 'head', 'options']
@@ -41,10 +48,10 @@ class PostListCreateView(generics.ListCreateAPIView):
         ordering = self.request.query_params.get('ordering', 'latest')
 
         if ordering == 'latest':
-            return queryset.order_by('-created_at')
+            return queryset.order_by('-created_at', '-id')
 
         if ordering == 'likes':
-            return queryset.order_by('-like_count', '-created_at')
+            return queryset.order_by('-like_count', '-created_at', '-id')
 
         return queryset.none()
 
@@ -66,6 +73,13 @@ class PostListCreateView(generics.ListCreateAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        if ordering == 'latest':
+            queryset = self.filter_queryset(self.get_queryset())
+            paginator = PostCursorPagination()
+            page = paginator.paginate_queryset(queryset, request, view=self)
+            serializer = self.get_serializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
         return super().list(request, *args, **kwargs)
 
