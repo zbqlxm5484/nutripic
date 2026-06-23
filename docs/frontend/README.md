@@ -7,6 +7,7 @@
 - `user-flow.md`: 사용자가 Neutripic에서 추천 리포트를 생성, 저장, 조회, 채팅, 커뮤니티 이용까지 이어지는 전체 흐름
 - `page-flow.md`: MVP 기준 페이지 목록, 라우트, 인증 조건, 예외 흐름, 페이지 간 이동 흐름
 - `page-components.md`: 프론트엔드 구현을 위한 페이지별 컴포넌트, 상태, 입력 규칙, 작업 분해안
+- `frontend-next-tasks.md`: 현재 프론트엔드 골격 이후 API/기능 연결을 위한 우선순위 체크리스트
 
 ## Source
 
