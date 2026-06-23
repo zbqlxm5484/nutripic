@@ -1,14 +1,14 @@
 <template>
   <AppLayout>
     <section class="generation-page" aria-labelledby="generation-title">
-      <header class="generation-page__header">
-        <p>리포트 생성</p>
-        <h1 id="generation-title">성분 중심 리포트를 준비하고 있습니다</h1>
-        <span>실제 진행률을 알 수 없을 때는 단계형 상태로 안내합니다.</span>
-      </header>
+      <PageHeader
+        title-id="generation-title"
+        eyebrow="리포트 생성"
+        title="성분 중심 리포트를 준비하고 있습니다"
+        description="실제 진행률을 알 수 없을 때는 단계형 상태로 안내합니다."
+      />
 
-      <section class="status-panel" aria-labelledby="status-title">
-        <h2 id="status-title">생성 단계</h2>
+      <ContentSection title-id="status-title" title="생성 단계">
         <ol class="step-list">
           <li class="step-list__item step-list__item--done">입력 검증</li>
           <li class="step-list__item step-list__item--active">사용자 입력 정규화</li>
@@ -16,7 +16,7 @@
           <li class="step-list__item">리포트 작성</li>
           <li class="step-list__item">저장</li>
         </ol>
-      </section>
+      </ContentSection>
 
       <LoadingState
         label="리포트 생성 중"
@@ -41,46 +41,13 @@
 </template>
 
 <script setup>
-import { AppLayout, BaseButton, ErrorState, LoadingState, SafetyNotice } from '../../../shared/components'
+import { AppLayout, BaseButton, ContentSection, ErrorState, LoadingState, PageHeader, SafetyNotice } from '../../../shared/components'
 </script>
 
 <style scoped>
 .generation-page {
   display: grid;
   gap: 20px;
-}
-
-.generation-page__header {
-  display: grid;
-  gap: 8px;
-}
-
-.generation-page__header p {
-  margin: 0;
-  color: #4e6f61;
-  font-weight: 700;
-}
-
-.generation-page__header h1 {
-  margin: 0;
-  font-size: 2rem;
-}
-
-.generation-page__header span {
-  color: #5b6b65;
-  line-height: 1.6;
-}
-
-.status-panel {
-  padding: 24px;
-  border: 1px solid #dde7e2;
-  border-radius: 8px;
-  background: #ffffff;
-}
-
-.status-panel h2 {
-  margin: 0 0 16px;
-  font-size: 1.25rem;
 }
 
 .step-list {
