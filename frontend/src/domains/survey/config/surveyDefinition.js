@@ -1,5 +1,26 @@
 const surveyStepDefinitions = [
   {
+    id: 'age',
+    title: '나이',
+    description: '성분 추천 조건에 사용할 만 나이를 입력합니다.',
+    inputType: 'number',
+    min: 14,
+    max: 120,
+    required: true,
+  },
+  {
+    id: 'gender',
+    title: '성별',
+    description: '성분 추천 조건에 사용할 성별 정보를 선택합니다.',
+    inputType: 'single_select',
+    required: true,
+    options: [
+      { code: 'female', name: '여성' },
+      { code: 'male', name: '남성' },
+      { code: 'other', name: '기타 또는 응답하지 않음' },
+    ],
+  },
+  {
     id: 'health_goals',
     title: '건강 목표',
     description: '1개 이상, 최대 5개까지 선택할 수 있습니다.',

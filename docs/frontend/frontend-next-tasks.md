@@ -138,7 +138,7 @@ Status: Done
 
 Priority: High
 
-Status: Pending
+Status: Done
 
 ### Goal
 
@@ -146,15 +146,16 @@ Status: Pending
 
 ### Checklist
 
-- [ ] 건강 목표 선택지를 API에서 조회한다.
-- [ ] 복용 약 선택지를 API에서 조회한다.
-- [ ] 특이사항 선택지를 API에서 조회한다.
-- [ ] 선택지 로딩, 실패, 빈 상태를 처리한다.
-- [ ] 건강 목표 1개 이상, 최대 5개 검증을 구현한다.
-- [ ] 선택한 건강 목표의 우선순위 상태를 구현한다.
-- [ ] 복용 약과 특이사항 선택 상태를 구현한다.
-- [ ] 추가 입력 값을 `additional_notes` request field로 연결한다.
-- [ ] 설문 request payload를 백엔드 명세의 snake_case 형식에 맞춘다.
+- [x] 건강 목표 선택지를 API에서 조회한다.
+- [x] 복용 약 선택지를 API에서 조회한다.
+- [x] 특이사항 선택지를 API에서 조회한다.
+- [x] 선택지 로딩, 실패, 빈 상태를 처리한다.
+- [x] 건강 목표 1개 이상, 최대 5개 검증을 구현한다.
+- [x] 선택한 건강 목표의 우선순위 상태를 구현한다.
+- [x] 복용 약과 특이사항 선택 상태를 구현한다.
+- [x] 추가 입력 값을 `additional_notes` request field로 연결한다.
+- [x] 설문 request payload를 백엔드 명세의 snake_case 형식에 맞춘다.
+- [x] 리포트 생성 request에 필요한 `age`, `gender` 입력과 검증을 설문 단계에 포함한다.
 
 ### Success Criteria
 
@@ -181,7 +182,7 @@ Status: Pending
 
 Priority: High
 
-Status: Pending
+Status: Done
 
 ### Goal
 
@@ -189,13 +190,19 @@ Status: Pending
 
 ### Checklist
 
-- [ ] 설문 submit에서 `POST /api/v1/reports/`를 호출한다.
-- [ ] `201 Created` 리포트 응답을 저장하거나 다음 페이지로 전달하는 방식을 정한다.
-- [ ] 생성 성공 시 `/reports/new` 또는 `/reports/:report_id`로 이동한다.
-- [ ] `needs_clarification` 응답을 설문 화면에 표시한다.
-- [ ] 사용량 제한, 검증 실패, AI 서버 실패 메시지를 구분해 표시한다.
-- [ ] `/reports/generating` 화면의 역할을 확정한다.
-- [ ] 실제 비동기 job API가 없으면 단계형 대기 화면 대신 제출 중 상태 중심으로 단순화할지 결정한다.
+- [x] 설문 submit에서 `POST /api/v1/reports/`를 호출한다.
+- [x] `201 Created` 리포트 응답을 저장하거나 다음 페이지로 전달하는 방식을 정한다.
+- [x] 생성 성공 시 `/reports/new` 또는 `/reports/:report_id`로 이동한다.
+- [x] `needs_clarification` 응답을 설문 화면에 표시한다.
+- [x] 사용량 제한, 검증 실패, AI 서버 실패 메시지를 구분해 표시한다.
+- [x] `/reports/generating` 화면의 역할을 확정한다.
+- [x] 실제 비동기 job API가 없으면 단계형 대기 화면 대신 제출 중 상태 중심으로 단순화할지 결정한다.
+
+### Implementation Notes
+
+- 설문 화면에서 직접 리포트 생성 API를 호출하고 제출 중 상태를 표시한다.
+- 생성 성공 응답은 `sessionStorage`의 `neutripic:latest_report`에 저장한 뒤 `/reports/new`에서 렌더링한다.
+- `/reports/generating`은 현재 비동기 job API가 없으므로 진행 화면이 아니라 설문 재진입/최근 생성 결과 안내 화면으로 둔다.
 
 ### Success Criteria
 
@@ -219,7 +226,7 @@ Status: Pending
 
 Priority: Medium
 
-Status: Pending
+Status: Done
 
 ### Goal
 
@@ -227,14 +234,20 @@ Status: Pending
 
 ### Checklist
 
-- [ ] 추천 기록 목록을 조회한다.
-- [ ] 목록 로딩, 빈 목록, 조회 실패 상태를 표시한다.
-- [ ] 리포트 상세를 `report_id` 기준으로 조회한다.
-- [ ] 리포트 상세의 입력 요약, 추천 성분, 생활 팁, 출처, 면책 문구를 렌더링한다.
-- [ ] `iherb_url`이 있는 성분만 외부 링크를 표시한다.
-- [ ] 제목 수정 API를 연결한다.
-- [ ] 삭제 API를 연결하고 성공 후 목록으로 이동한다.
-- [ ] 삭제 전 확인 UI를 추가한다.
+- [x] 추천 기록 목록을 조회한다.
+- [x] 목록 로딩, 빈 목록, 조회 실패 상태를 표시한다.
+- [x] 리포트 상세를 `report_id` 기준으로 조회한다.
+- [x] 리포트 상세의 입력 요약, 추천 성분, 생활 팁, 출처, 면책 문구를 렌더링한다.
+- [x] `iherb_url`이 있는 성분만 외부 링크를 표시한다.
+- [x] 제목 수정 API를 연결한다.
+- [x] 삭제 API를 연결하고 성공 후 목록으로 이동한다.
+- [x] 삭제 전 확인 UI를 추가한다.
+
+### Implementation Notes
+
+- `/reports`는 목록 API의 `results`를 렌더링하고 로딩/빈/실패 상태를 표시한다.
+- `/reports/:report_id`는 상세 API 응답 구조에 맞춰 입력 요약, 추천 성분, 생활 팁, 출처, 면책 문구를 렌더링한다.
+- 제목 수정은 `window.prompt`, 삭제 확인은 `window.confirm`으로 연결했다. 별도 모달 UX가 필요하면 추후 공용 확인 컴포넌트를 도입한다.
 
 ### Success Criteria
 
@@ -262,7 +275,7 @@ Status: Pending
 
 Priority: Medium
 
-Status: Pending
+Status: Done
 
 ### Goal
 
@@ -270,12 +283,18 @@ Status: Pending
 
 ### Checklist
 
-- [ ] `ReportChatPanel`을 입력 값과 submit 이벤트를 받을 수 있게 확장한다.
-- [ ] 메시지 목록 조회 API를 연결한다.
-- [ ] 질문 전송 API를 연결한다.
-- [ ] 전송 중 상태와 중복 제출 방지를 구현한다.
-- [ ] assistant 응답의 citations와 guardrail 결과 표시 정책을 정한다.
-- [ ] 채팅 사용량 제한 또는 가드레일 차단 오류를 표시한다.
+- [x] `ReportChatPanel`을 입력 값과 submit 이벤트를 받을 수 있게 확장한다.
+- [x] 메시지 목록 조회 API를 연결한다.
+- [x] 질문 전송 API를 연결한다.
+- [x] 전송 중 상태와 중복 제출 방지를 구현한다.
+- [x] assistant 응답의 citations와 guardrail 결과 표시 정책을 정한다.
+- [x] 채팅 사용량 제한 또는 가드레일 차단 오류를 표시한다.
+
+### Implementation Notes
+
+- `ReportChatPanel`은 `v-model`, submit 이벤트, 로딩/빈 상태, 에러 메시지, citations, guardrail 결과를 표시한다.
+- 채팅 에러는 공통 API 에러 메시지를 패널 안에 표시한다.
+- 질문 전송 성공 시 사용자 메시지와 assistant 응답을 현재 메시지 목록에 추가한다.
 
 ### Success Criteria
 
