@@ -1,92 +1,167 @@
 <template>
   <SurveyLayout>
-    <section class="progress-panel" aria-labelledby="survey-progress-title">
-      <div>
-        <p class="progress-panel__step">1 / 4</p>
-        <h2 id="survey-progress-title">건강 목표 선택</h2>
-      </div>
-      <progress max="4" value="1">1 / 4</progress>
+    <section v-if="isLoading" class="progress-panel" aria-labelledby="survey-progress-title">
+      <LoadingState label="설문 선택지를 불러오는 중입니다" />
     </section>
 
-    <ContentSection
-      title-id="health-goal-title"
-      title="건강 목표"
-      description="1개 이상, 최대 5개까지 선택할 수 있습니다."
+    <ErrorState
+      v-else-if="loadError"
+      title="설문을 불러오지 못했습니다"
+      :description="loadError"
     >
-      <div class="chip-grid">
-        <label v-for="goal in healthGoals" :key="goal">
-          <input type="checkbox" name="health_goals" :value="goal" />
-          <span>{{ goal }}</span>
-        </label>
+      <template #action>
+        <BaseButton size="sm" @click="loadSurveyOptions">다시 시도</BaseButton>
+      </template>
+    </ErrorState>
+
+    <template v-else>
+      <section class="progress-panel" aria-labelledby="survey-progress-title">
+        <div>
+          <p class="progress-panel__step">{{ progressValue }} / {{ surveySteps.length }}</p>
+          <h2 id="survey-progress-title">{{ currentStep.title }}</h2>
+        </div>
+        <progress :max="surveySteps.length" :value="progressValue">
+          {{ progressValue }} / {{ surveySteps.length }}
+        </progress>
+      </section>
+
+      <ContentSection
+        :title-id="`${currentStep.id}-title`"
+        :title="currentStep.title"
+        :description="currentStep.description"
+      >
+        <template v-if="currentStep.inputType === 'multi_select'">
+          <EmptyState
+            v-if="currentOptions.length === 0"
+            title="선택지가 없습니다"
+            description="현재 단계에서 표시할 선택지가 없습니다."
+          />
+          <div v-else class="chip-grid">
+            <label
+              v-for="option in currentOptions"
+              :key="option.code"
+              :class="{ 'chip-grid__item--checked': state[currentStep.field].includes(option.code) }"
+            >
+              <input
+                type="checkbox"
+                :name="currentStep.field"
+                :value="option.code"
+                :checked="state[currentStep.field].includes(option.code)"
+                @change="selectStepOption(currentStep, option.code)"
+              />
+              <span>{{ option.name }}</span>
+            </label>
+          </div>
+
+          <p class="step-help">
+            선택 {{ state[currentStep.field].length }}개
+            <span v-if="currentStep.max">/ 최대 {{ currentStep.max }}개</span>
+          </p>
+
+          <FormErrorMessage
+            v-if="canShowError(currentStep.id) && !currentValidation.isValid"
+            :message="currentValidation.message"
+          />
+        </template>
+
+        <template v-else-if="currentStep.inputType === 'textarea'">
+          <textarea
+            v-model="state.additional_notes"
+            class="form-control"
+            name="additional_notes"
+            rows="5"
+            placeholder="과도한 개인정보는 입력하지 마세요."
+          />
+        </template>
+      </ContentSection>
+
+      <ContentSection
+        v-if="state.health_goals.length > 0"
+        title-id="priority-title"
+        title="목표 우선순위"
+        description="선택한 순서대로 우선순위가 자동 지정됩니다."
+      >
+        <ol class="priority-list">
+          <li v-for="goalCode in state.health_goals" :key="goalCode">
+            {{ getOptionName('health_goals', goalCode) }}
+          </li>
+        </ol>
+      </ContentSection>
+
+      <SafetyNotice />
+
+      <div class="action-bar" aria-label="설문 이동">
+        <BaseButton :disabled="isFirstStep" @click="previous">이전</BaseButton>
+        <BaseButton v-if="!isLastStep" variant="primary" @click="next">다음</BaseButton>
+        <BaseButton v-else variant="primary" @click="handleCreateReportRequest">
+          리포트 생성 요청
+        </BaseButton>
       </div>
-    </ContentSection>
-
-    <ContentSection
-      title-id="priority-title"
-      title="목표 우선순위"
-      description="선택한 건강 목표의 중요도를 중복 없이 지정합니다."
-    >
-      <ol class="priority-list">
-        <li>선택한 목표가 여기에 표시됩니다.</li>
-        <li>드래그 또는 순서 선택 UI는 상태 연결 시 추가합니다.</li>
-      </ol>
-    </ContentSection>
-
-    <ContentSection
-      title-id="medication-title"
-      title="복용 약"
-      description="해당 항목이 없으면 미선택 또는 없음 상태를 명확히 구분합니다."
-    >
-      <div class="chip-grid">
-        <label v-for="medication in medications" :key="medication">
-          <input type="checkbox" name="medications" :value="medication" />
-          <span>{{ medication }}</span>
-        </label>
-      </div>
-    </ContentSection>
-
-    <ContentSection
-      title-id="condition-title"
-      title="특이사항"
-      description="임신/수유, 간/신장 질환, 항응고제 등 고위험 항목은 안전 안내를 강화합니다."
-    >
-      <div class="chip-grid">
-        <label v-for="condition in specialConditions" :key="condition">
-          <input type="checkbox" name="special_conditions" :value="condition" />
-          <span>{{ condition }}</span>
-        </label>
-      </div>
-    </ContentSection>
-
-    <ContentSection
-      title-id="additional-info-title"
-      title="추가 정보"
-      description="선택지에 없는 복용 약, 질환, 알레르기, 생활 습관을 입력합니다."
-    >
-      <textarea
-        class="form-control"
-        name="additional_info"
-        rows="5"
-        placeholder="과도한 개인정보는 입력하지 마세요."
-      />
-    </ContentSection>
-
-    <SafetyNotice />
-
-    <div class="action-bar" aria-label="설문 이동">
-      <BaseButton>이전</BaseButton>
-      <BaseButton>다음</BaseButton>
-      <BaseButton to="/reports/generating" variant="primary">리포트 생성 요청</BaseButton>
-    </div>
+    </template>
   </SurveyLayout>
 </template>
 
 <script setup>
-import { BaseButton, ContentSection, SafetyNotice, SurveyLayout } from '../../../shared/components'
+import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  BaseButton,
+  ContentSection,
+  EmptyState,
+  ErrorState,
+  FormErrorMessage,
+  LoadingState,
+  SafetyNotice,
+  SurveyLayout,
+} from '../../../shared/components'
+import { surveySteps } from '../config/surveyDefinition'
+import { useSurveyFunnel } from '../composables/surveyFlow'
+import { useSurveyOptions } from '../composables/useSurveyOptions'
+import { buildReportPayload } from '../mappers/surveyReportPayload'
 
-const healthGoals = ['피로', '수면', '눈 건강', '장 건강', '면역', '피부', '스트레스', '혈행', '관절', '기억력']
-const medications = ['고혈압약', '당뇨약', '항응고제', '항우울제', '피임약', '진통소염제', '위장약', '갑상선약']
-const specialConditions = ['임신 또는 수유', '간 질환', '신장 질환', '심혈관 질환', '알레르기', '수술 예정', '미성년자 또는 고령자']
+const router = useRouter()
+const {
+  state,
+  currentStep,
+  progressValue,
+  isFirstStep,
+  isLastStep,
+  currentValidation,
+  surveyValidation,
+  selectStepOption,
+  next,
+  previous,
+  showValidationFor,
+  canShowError,
+} = useSurveyFunnel(surveySteps)
+const {
+  optionGroups,
+  isLoading,
+  loadError,
+  loadSurveyOptions,
+  getOptionName,
+} = useSurveyOptions(surveySteps)
+
+const currentOptions = computed(() => {
+  return optionGroups[currentStep.value.optionGroup] ?? []
+})
+
+onMounted(() => {
+  loadSurveyOptions()
+})
+
+function handleCreateReportRequest() {
+  if (!surveyValidation.value.isValid) {
+    showValidationFor(surveyValidation.value.stepId)
+    return
+  }
+
+  window.sessionStorage.setItem(
+    'neutripic:survey_payload',
+    JSON.stringify(buildReportPayload(state, optionGroups)),
+  )
+  router.push('/reports/generating')
+}
 </script>
 
 <style scoped>
@@ -133,6 +208,18 @@ const specialConditions = ['임신 또는 수유', '간 질환', '신장 질환'
   border: 1px solid #c9d8d1;
   border-radius: 8px;
   color: #31443d;
+}
+
+.chip-grid__item--checked {
+  border-color: #4e8f70;
+  background: #edf7f2;
+  font-weight: 700;
+}
+
+.step-help {
+  margin: 12px 0 0;
+  color: #4e6f61;
+  font-size: 0.875rem;
 }
 
 .priority-list {
