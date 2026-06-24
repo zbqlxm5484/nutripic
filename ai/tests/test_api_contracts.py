@@ -1,6 +1,7 @@
 import os
 
 os.environ.setdefault("AI_INTERNAL_API_KEY", "test_internal_key")
+os.environ["AI_GENERATION_PROVIDER"] = "fallback"
 
 from fastapi.testclient import TestClient
 

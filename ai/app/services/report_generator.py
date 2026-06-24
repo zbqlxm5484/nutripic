@@ -5,11 +5,17 @@ from app.schemas.reports import (
     ReportGenerateRequest,
     ReportGenerateResponse,
 )
+from app.services.llm_generation import generate_report_with_llm
 
 DEFAULT_DISCLAIMER = "질환이 있거나 약을 복용 중인 경우 전문가와 상담하세요."
 
 
 def generate_report(payload: ReportGenerateRequest) -> ReportGenerateResponse:
+    fallback_response = build_template_report(payload)
+    return generate_report_with_llm(payload, fallback_response)
+
+
+def build_template_report(payload: ReportGenerateRequest) -> ReportGenerateResponse:
     normalized_input = payload.normalized_input
     primary_goal = normalized_input.health_goals[0].name_ko if normalized_input.health_goals else "건강 관리"
 
@@ -49,7 +55,7 @@ def build_recommended_ingredients(payload: ReportGenerateRequest) -> list[Recomm
                 name_ko="마그네슘",
                 name_en="Magnesium",
                 normalized_name="magnesium",
-                reason="피로와 수면 관리에 관련된 근거가 검색되어 후보로 선정되었습니다.",
+                reason="피로와 수면 관리에 관련된 근거가 검색되어 후보로 선정했습니다.",
                 expected_effects=["정상적인 근육 기능 유지"],
                 recommended_dosage="기능성원료 인정현황의 일일섭취량 범위를 따르세요.",
                 side_effects=["설사", "복부 불편감"],
@@ -66,7 +72,7 @@ def build_recommended_ingredients(payload: ReportGenerateRequest) -> list[Recomm
                 name_ko=metadata.get("ingredient_name_ko", context.title),
                 name_en=metadata.get("ingredient_name_en", context.title),
                 normalized_name=metadata.get("normalized_name", context.title.lower().replace(" ", "_")),
-                reason="사용자 입력과 RAG 검색 결과를 바탕으로 관련 성분 후보로 선정되었습니다.",
+                reason="사용자 입력과 RAG 검색 결과를 바탕으로 관련 성분 후보로 선정했습니다.",
                 expected_effects=metadata.get("expected_effects", ["기능성 근거 확인 필요"]),
                 recommended_dosage=metadata.get(
                     "daily_dosage",
