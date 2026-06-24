@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -28,6 +30,9 @@ class NormalizedGoal(BaseModel):
     name_en: str
     priority: int
     confidence: float
+    normalized_name: str | None = None
+    term_type: str | None = None
+    source_ids: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class NormalizedItem(BaseModel):
@@ -35,12 +40,18 @@ class NormalizedItem(BaseModel):
     name_ko: str
     name_en: str
     confidence: float
+    normalized_name: str | None = None
+    term_type: str | None = None
+    source_ids: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class AdditionalTerm(BaseModel):
     text_ko: str
     text_en: str
     confidence: float
+    normalized_name: str | None = None
+    term_type: str | None = None
+    source_ids: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class NormalizedInput(BaseModel):
@@ -55,8 +66,16 @@ class ClarificationQuestion(BaseModel):
     message: str
 
 
+class RagQueryBundle(BaseModel):
+    idisk: dict[str, Any] = Field(default_factory=dict)
+    mfds: dict[str, Any] = Field(default_factory=dict)
+    iherb: dict[str, Any] = Field(default_factory=dict)
+    text_queries: list[str] = Field(default_factory=list)
+
+
 class NormalizeResponse(BaseModel):
     normalized_input: NormalizedInput
     search_queries: list[str]
+    rag_query_bundle: RagQueryBundle = Field(default_factory=RagQueryBundle)
     needs_clarification: bool = False
     questions: list[ClarificationQuestion] = Field(default_factory=list)

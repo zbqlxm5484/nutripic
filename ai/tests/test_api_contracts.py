@@ -88,6 +88,9 @@ def test_normalize_returns_normalized_input_and_search_queries():
     assert body["normalized_input"]["special_conditions"][0]["name_en"] == "allergy"
     assert "fatigue sleep supplements" in body["search_queries"]
     assert "anticoagulant supplement precautions" in body["search_queries"]
+    assert body["rag_query_bundle"]["idisk"]["drug_ids"] == ["D000011"]
+    assert body["rag_query_bundle"]["mfds"]["functional_categories"] == ["피로개선"]
+    assert body["rag_query_bundle"]["text_queries"] == body["search_queries"]
 
 
 def test_rag_search_returns_results():
