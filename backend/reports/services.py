@@ -1,84 +1,269 @@
-def generate_report(request_data):
-    # TODO: AI/RAG 서버가 준비되면 아래 mock 응답 대신 실제 내부 API 호출로 교체한다.
-    # response = requests.post(AI_SERVER_URL, json=request_data, timeout=30)
-    # response.raise_for_status()
-    # return response.json()
+import uuid
 
-    health_goal_names = [item['name'] for item in request_data['health_goals']]
-    medication_names = [item['name'] for item in request_data.get('medications', [])]
-    special_condition_names = [
-        item['name'] for item in request_data.get('special_conditions', [])
-    ]
+from rest_framework import status
+from rest_framework.exceptions import APIException
 
-    title_goals = '와 '.join(health_goal_names[:2])
-    title = f'{title_goals} 개선을 위한 성분 리포트'
+from .ai_client import AIClientError, AIServiceUnavailableError, get_ai_client
 
-    return {
-        'status': 'completed',
-        'title': title,
-        'input_summary': {
+
+class AIServerException(APIException):
+    status_code = status.HTTP_502_BAD_GATEWAY
+    default_detail = 'AI 서버 호출에 실패했습니다.'
+    default_code = 'ai_server_error'
+
+
+class AIServiceUnavailableException(APIException):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_detail = 'AI 서비스를 일시적으로 사용할 수 없습니다.'
+    default_code = 'service_unavailable'
+
+
+def generate_report(request_data, user=None):
+    request_id = create_request_id()
+    client = get_ai_client()
+
+    input_guardrail = call_ai(
+        client.input_guardrail,
+        {
+            'request_id': request_id,
+            'user_id': get_user_id(user),
+            'task_type': 'report_generation',
+            'input_text': build_input_text(request_data),
+            'structured_input': {
+                'health_goals': [item['code'] for item in request_data['health_goals']],
+                'medications': [item['code'] for item in request_data.get('medications', [])],
+                'special_conditions': [
+                    item['code'] for item in request_data.get('special_conditions', [])
+                ],
+            },
+        },
+    )
+    clarification = build_clarification_response(input_guardrail)
+    if clarification:
+        return clarification
+
+    normalize_response = call_ai(
+        client.normalize,
+        {
+            'request_id': request_id,
             'age': request_data['age'],
             'gender': request_data['gender'],
-            'health_goals': health_goal_names,
-            'medications': medication_names,
-            'special_conditions': special_condition_names,
-            'additional_notes': request_data.get('additional_notes', ''),
+            'health_goals': request_data['health_goals'],
+            'medications': request_data.get('medications', []),
+            'special_conditions': request_data.get('special_conditions', []),
+            'additional_notes': request_data.get('additional_notes') or '',
         },
-        'recommended_ingredients': [
-            {
-                'name_ko': '마그네슘',
-                'name_en': 'Magnesium',
-                'normalized_name': 'magnesium',
-                'reason': '수면과 근육 이완 관련 기능성 근거가 있어 후보로 선정되었습니다.',
-                'expected_effects': ['수면 질 관리', '근육 기능 유지'],
-                'recommended_dosage': '기능성 원료 인정현황 기준 범위 내에서 섭취하세요.',
-                'side_effects': ['설사', '복부 불편감'],
-                'precautions': ['질환이 있거나 약을 복용 중인 경우 전문가와 상담하세요.'],
-                'iherb_url': 'https://kr.iherb.com/c/minerals',
-            }
-        ],
-        'lifestyle_tips': [
-            '카페인 섭취 시간과 양을 조절해 보세요.',
-        ],
-        'disclaimer': '질환이 있거나 약을 복용 중인 경우 전문가와 상담하세요.',
-        'citations': [
-            {
-                'source_type': 'functional_ingredient',
-                'source_name': '건강기능식품 기능성원료 인정현황',
-                'document_id': 'functional_ingredient_magnesium',
-            }
-        ],
-    }
+    )
+    clarification = build_clarification_response(normalize_response)
+    if clarification:
+        return clarification
 
-def generate_report_chat_response(report, content):
-    # TODO: AI/RAG 서버가 준비되면 아래 mock 응답 대신 실제 내부 API 호출로 교체한다.
-    # response = requests.post(
-    #     AI_CHAT_SERVER_URL,
-    #     json={
-    #         'report_id': report.id,
-    #         'report': {
-    #             'title': report.title,
-    #             'input_summary': report.input_summary,
-    #             'recommended_ingredients': report.recommended_ingredients,
-    #             'citations': report.citations,
-    #         },
-    #         'content': content,
-    #     },
-    #     timeout=30,
-    # )
-    # response.raise_for_status()
-    # return response.json()
+    rag_response = call_ai(
+        client.rag_search,
+        {
+            'request_id': request_id,
+            'search_queries': normalize_response['search_queries'],
+            'filters': {
+                'source_types': ['idisk', 'functional_ingredient'],
+                'top_k': 8,
+            },
+        },
+    )
+
+    report_response = call_ai(
+        client.generate_report,
+        {
+            'request_id': request_id,
+            'user_id': get_user_id(user),
+            'normalized_input': build_report_normalized_input(
+                request_data=request_data,
+                normalized_input=normalize_response['normalized_input'],
+            ),
+            'rag_contexts': build_rag_contexts(rag_response['results']),
+        },
+    )
+
+    output_guardrail = call_ai(
+        client.output_guardrail,
+        {
+            'request_id': request_id,
+            'task_type': 'report_generation',
+            'content': build_report_output_text(report_response),
+            'citations': report_response.get('citations', []),
+        },
+    )
+    clarification = build_clarification_response(output_guardrail)
+    if clarification:
+        return clarification
+
+    return report_response
+
+
+def generate_report_chat_response(report, content, user=None):
+    request_id = create_request_id()
+    client = get_ai_client()
+
+    chat_response = call_ai(
+        client.chat_respond,
+        {
+            'request_id': request_id,
+            'user_id': get_user_id(user or report.user),
+            'report_id': report.id,
+            'report_context': build_report_context(report),
+            'message': {
+                'content': content,
+            },
+            'recent_messages': build_recent_messages(report),
+        },
+    )
+
+    output_guardrail = call_ai(
+        client.output_guardrail,
+        {
+            'request_id': request_id,
+            'task_type': 'chat_response',
+            'content': chat_response['content'],
+            'citations': chat_response.get('citations', []),
+        },
+    )
+
+    if not output_guardrail.get('is_allowed', True):
+        chat_response['content'] = (
+            output_guardrail.get('safe_message')
+            or '안전한 답변을 제공하기 위해 응답을 제한했습니다.'
+        )
+        chat_response['guardrail_result'] = {
+            'is_allowed': False,
+            'risk_level': output_guardrail.get('risk_level', 'high'),
+        }
 
     return {
         'role': 'assistant',
-        'content': (
-            '일반적으로 리포트에 포함된 성분은 개인의 건강 상태와 복용 중인 약을 '
-            '함께 고려해 섭취 여부를 판단하는 것이 좋습니다. 질환이 있거나 약을 '
-            '복용 중인 경우 전문가와 상담하세요.'
-        ),
-        'guardrail_result': {
-            'is_allowed': True,
-            'risk_level': 'low',
-        },
-        'citations': report.citations,
+        'content': chat_response['content'],
+        'guardrail_result': chat_response.get('guardrail_result', {}),
+        'citations': chat_response.get('citations', []),
     }
+
+
+def call_ai(method, payload):
+    try:
+        return method(payload)
+    except AIServiceUnavailableError as error:
+        raise AIServiceUnavailableException() from error
+    except AIClientError as error:
+        if error.status_code == status.HTTP_503_SERVICE_UNAVAILABLE:
+            raise AIServiceUnavailableException() from error
+        raise AIServerException() from error
+
+
+def create_request_id():
+    return f'req_{uuid.uuid4().hex}'
+
+
+def get_user_id(user):
+    return user.id if user and getattr(user, 'id', None) else 0
+
+
+def build_input_text(request_data):
+    parts = []
+    parts.extend(item['name'] for item in request_data['health_goals'])
+    parts.extend(item['name'] for item in request_data.get('medications', []))
+    parts.extend(item['name'] for item in request_data.get('special_conditions', []))
+
+    additional_notes = request_data.get('additional_notes')
+    if additional_notes:
+        parts.append(additional_notes)
+
+    return ' '.join(parts)
+
+
+def build_clarification_response(ai_response):
+    if ai_response.get('is_allowed') is False:
+        return {
+            'status': 'needs_clarification',
+            'questions': [
+                {
+                    'code': ai_response.get('blocked_reason') or 'ai_guardrail_blocked',
+                    'message': ai_response.get('safe_message') or '요청을 처리할 수 없습니다.',
+                }
+            ],
+        }
+
+    if ai_response.get('needs_clarification'):
+        return {
+            'status': 'needs_clarification',
+            'questions': ai_response.get('questions', []),
+        }
+
+    return None
+
+
+def build_report_normalized_input(request_data, normalized_input):
+    return {
+        'age': request_data['age'],
+        'gender': request_data['gender'],
+        'health_goals': normalized_input.get('health_goals', []),
+        'medications': normalized_input.get('medications', []),
+        'special_conditions': normalized_input.get('special_conditions', []),
+        'additional_terms': normalized_input.get('additional_terms', []),
+        'additional_notes': request_data.get('additional_notes') or '',
+    }
+
+
+def build_rag_contexts(results):
+    return [
+        {
+            'document_id': result['document_id'],
+            'source_type': result['source_type'],
+            'source_name': result.get('source_name'),
+            'title': result['title'],
+            'content': result['content'],
+            'metadata': result.get('metadata', {}),
+        }
+        for result in results
+    ]
+
+
+def build_report_output_text(report_response):
+    ingredient_text = ' '.join(
+        [
+            ingredient.get('reason', '')
+            for ingredient in report_response.get('recommended_ingredients', [])
+        ]
+    )
+
+    return ' '.join(
+        [
+            report_response.get('title', ''),
+            ingredient_text,
+            report_response.get('disclaimer', ''),
+        ]
+    ).strip()
+
+
+def build_report_context(report):
+    return {
+        'title': report.title,
+        'recommended_ingredients': [
+            {
+                'name_ko': ingredient.get('name_ko', ''),
+                'name_en': ingredient.get('name_en', ''),
+                'normalized_name': ingredient.get('normalized_name', ''),
+                'precautions': ingredient.get('precautions', []),
+            }
+            for ingredient in report.recommended_ingredients
+        ],
+        'disclaimer': report.disclaimer,
+    }
+
+
+def build_recent_messages(report):
+    messages = list(report.messages.order_by('-created_at', '-id')[:5])
+
+    return [
+        {
+            'role': message.role,
+            'content': message.content,
+        }
+        for message in reversed(messages)
+    ]

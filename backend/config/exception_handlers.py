@@ -10,6 +10,8 @@ ERROR_CODE_BY_STATUS = {
     status.HTTP_409_CONFLICT: 'conflict',
     status.HTTP_429_TOO_MANY_REQUESTS: 'rate_limit_exceeded',
     status.HTTP_500_INTERNAL_SERVER_ERROR: 'internal_server_error',
+    status.HTTP_502_BAD_GATEWAY: 'ai_server_error',
+    status.HTTP_503_SERVICE_UNAVAILABLE: 'service_unavailable',
 }
 
 

@@ -165,3 +165,14 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
 }
+
+
+AI_SERVER_BASE_URL = os.environ.get(
+    'AI_SERVER_BASE_URL',
+    'http://127.0.0.1:8001/internal/ai/v1',
+)
+AI_INTERNAL_API_KEY = os.environ.get(
+    'AI_INTERNAL_API_KEY',
+    'neutripic_local_ai_internal_key',
+)
+AI_REQUEST_TIMEOUT_SECONDS = float(os.environ.get('AI_REQUEST_TIMEOUT_SECONDS', '30'))

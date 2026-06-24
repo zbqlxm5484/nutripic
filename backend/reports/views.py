@@ -59,7 +59,7 @@ class ReportListCreateView(generics.ListCreateAPIView):
         serializer = ReportCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        result = generate_report(serializer.validated_data)
+        result = generate_report(serializer.validated_data, user=request.user)
 
         if result['status'] == 'needs_clarification':
             return Response(result, status=status.HTTP_200_OK)
@@ -128,6 +128,7 @@ class ReportMessageListCreateView(generics.ListCreateAPIView):
         result = generate_report_chat_response(
             report=report,
             content=user_message.content,
+            user=request.user,
         )
 
         assistant_message = ReportMessage.objects.create(
