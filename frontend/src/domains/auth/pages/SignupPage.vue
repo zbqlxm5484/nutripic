@@ -152,16 +152,21 @@ async function handleSubmit() {
 
 <style scoped>
 .auth-submit {
-  min-height: 44px;
+  width: 100%;
 }
 
 .auth-link {
-  margin: 18px 0 0;
-  color: #5b6b65;
+  margin: var(--space-5) 0 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
 }
 
 .auth-link a {
-  color: #165a46;
-  font-weight: 700;
+  color: var(--color-brand);
+  font-weight: 500;
+}
+
+.auth-link a:hover {
+  text-decoration: underline;
 }
 </style>

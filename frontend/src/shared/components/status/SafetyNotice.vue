@@ -20,16 +20,18 @@ defineProps({
 
 <style scoped>
 .safety-notice {
-  padding: 16px 18px;
-  border: 1px solid #d5dfc3;
-  border-radius: 8px;
-  background: #fbfdf4;
-  color: #354421;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-md);
+  background: var(--color-warning-surface);
+  color: var(--color-warning-text);
+  font-size: 14px;
 }
 
 .safety-notice strong {
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: var(--space-1);
+  font-weight: 800;
 }
 
 .safety-notice p {

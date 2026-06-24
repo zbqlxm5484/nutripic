@@ -33,11 +33,11 @@ defineProps({
 
 <style scoped>
 .survey-layout__header {
-  margin-bottom: 28px;
+  margin-bottom: var(--space-8);
 }
 
 .survey-layout__body {
   display: grid;
-  gap: 20px;
+  gap: var(--space-6);
 }
 </style>

@@ -17,6 +17,10 @@
       </ErrorState>
 
       <template v-else-if="post">
+        <p v-if="isDummyPost" class="fallback-notice" role="status">
+          연결이 불안정해 예시 게시글을 표시합니다.
+        </p>
+
         <header class="post-detail__header">
           <p>{{ formatAuthor(post.author) }}</p>
           <h1 id="post-title">{{ post.title }}</h1>
@@ -124,6 +128,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { authTokenStorage, communityApi } from '../../../shared/api'
 import { AppLayout, BaseButton, EmptyState, ErrorState, FormErrorMessage, LoadingState } from '../../../shared/components'
+import { findDummyCommunityPost, getDummyCommunityComments } from '../data/dummyPosts'
 
 const route = useRoute()
 const router = useRouter()
@@ -139,6 +144,7 @@ const commentsError = ref('')
 const commentSubmitError = ref('')
 const commentInput = ref('')
 const replyParent = ref(null)
+const isDummyPost = ref(false)
 
 const postId = computed(() => route.params.post_id)
 const currentUser = computed(() => authTokenStorage.getUser())
@@ -156,8 +162,16 @@ async function loadPost() {
 
   try {
     post.value = await communityApi.getPost(postId.value)
+    isDummyPost.value = false
   } catch (error) {
-    loadError.value = error?.message || '잠시 후 다시 시도해 주세요.'
+    const fallbackPost = findDummyCommunityPost(postId.value)
+
+    if (fallbackPost) {
+      post.value = fallbackPost
+      isDummyPost.value = true
+    } else {
+      loadError.value = error?.message || '잠시 후 다시 시도해 주세요.'
+    }
   } finally {
     isLoading.value = false
   }
@@ -175,7 +189,13 @@ async function loadComments() {
         ? response
         : []
   } catch (error) {
-    commentsError.value = error?.message || '댓글을 불러오지 못했습니다.'
+    const fallbackComments = getDummyCommunityComments(postId.value)
+
+    if (fallbackComments.length > 0) {
+      comments.value = fallbackComments
+    } else {
+      commentsError.value = error?.message || '댓글을 불러오지 못했습니다.'
+    }
   } finally {
     isCommentsLoading.value = false
   }
@@ -184,6 +204,15 @@ async function loadComments() {
 async function toggleLike() {
   if (!isAuthenticated.value) {
     redirectToLogin()
+    return
+  }
+
+  if (isDummyPost.value) {
+    post.value = {
+      ...post.value,
+      is_liked: !post.value.is_liked,
+      like_count: Math.max(0, (post.value.like_count ?? 0) + (post.value.is_liked ? -1 : 1)),
+    }
     return
   }
 
@@ -316,112 +345,130 @@ function formatDate(value) {
 <style scoped>
 .post-detail {
   display: grid;
-  gap: 20px;
+  gap: var(--space-5);
+  margin: 0 auto;
+  width: min(100%, 680px);
 }
 
 .post-detail__header,
 .post-detail__body,
 .comments {
-  padding: 24px;
-  border: 1px solid #dde7e2;
-  border-radius: 8px;
-  background: #ffffff;
+  padding: var(--space-5) 0;
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
 }
 
 .post-detail__header p {
-  margin: 0 0 8px;
-  color: #4e6f61;
-  font-weight: 700;
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-soft);
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .post-detail__header h1 {
   margin: 0;
-  font-size: 2rem;
+  color: var(--color-text);
+  font-size: 24px;
+  line-height: 1.35;
+  letter-spacing: 0;
 }
 
 .post-detail__header span,
 .comment span {
   display: block;
-  margin-top: 8px;
-  color: #5b6b65;
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: 13px;
 }
 
 .post-detail__body p,
 .comment p {
   margin: 0;
-  color: #31443d;
+  color: var(--color-text-soft);
   line-height: 1.7;
 }
 
 .post-detail__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .comments {
   display: grid;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .comments h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 18px;
+  letter-spacing: 0;
 }
 
 .comment {
-  padding: 16px;
-  border-radius: 8px;
-  background: #f0f6f3;
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
 }
 
 .comment-list,
 .reply-list {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .reply-list {
-  margin-top: 12px;
-  padding-left: 16px;
-  border-left: 3px solid #d8e7df;
+  margin-top: var(--space-3);
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--color-border);
 }
 
 .comment--reply {
-  background: #ffffff;
+  border-bottom: 0;
 }
 
 .comment__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .comment-form {
   display: grid;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .reply-target {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
   margin: 0;
-  color: #5b6b65;
+  color: var(--color-text-muted);
+  font-size: 13px;
 }
 
 .reply-target button {
   border: 0;
   background: transparent;
-  color: #165a46;
+  color: var(--color-brand);
   cursor: pointer;
   font: inherit;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .comment-form .form-control {
   width: 100%;
+}
+
+.fallback-notice {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-surface);
+  color: var(--color-warning-text);
+  font-size: 13px;
 }
 </style>

@@ -94,24 +94,32 @@ function handleSubmit() {
 <style scoped>
 .community-form-page {
   display: grid;
-  gap: 20px;
+  gap: var(--space-5);
+  margin: 0 auto;
+  width: min(100%, 680px);
 }
 
 .community-form-page header p {
-  margin: 0 0 8px;
-  color: #4e6f61;
-  font-weight: 700;
+  margin: 0 0 var(--space-2);
+  color: var(--color-brand-muted);
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .community-form-page header h1 {
   margin: 0;
-  font-size: 2rem;
+  color: var(--color-text);
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .community-form-page header span {
   display: block;
-  margin-top: 8px;
-  color: #5b6b65;
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 </style>

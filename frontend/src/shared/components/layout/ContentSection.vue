@@ -34,10 +34,11 @@ defineProps({
 .content-section {
   display: grid;
   gap: var(--space-4);
-  padding: var(--space-6);
+  padding: var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
+  box-shadow: var(--shadow-raised);
 }
 
 .content-section__header {
@@ -45,15 +46,31 @@ defineProps({
   gap: var(--space-2);
 }
 
-.content-section__eyebrow,
+.content-section__eyebrow {
+  margin: 0;
+  color: var(--color-brand-muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .content-section__description {
   margin: 0;
   color: var(--color-text-muted);
+  font-size: 14px;
   line-height: 1.6;
 }
 
 .content-section h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--color-text);
+}
+
+@media (min-width: 720px) {
+  .content-section {
+    padding: var(--space-6);
+  }
 }
 </style>

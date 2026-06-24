@@ -106,24 +106,32 @@ async function handleSubmit() {
 
 <style scoped>
 .redirect-notice {
-  margin: 0 0 18px;
-  padding: 12px 14px;
-  border-radius: 8px;
-  background: #f0f6f3;
-  color: #31443d;
+  margin: 0 0 var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-blue-200);
+  border-radius: var(--radius-sm);
+  background: var(--color-blue-100);
+  color: var(--color-text-soft);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .auth-submit {
-  min-height: 44px;
+  width: 100%;
 }
 
 .auth-link {
-  margin: 18px 0 0;
-  color: #5b6b65;
+  margin: var(--space-5) 0 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
 }
 
 .auth-link a {
-  color: #165a46;
-  font-weight: 700;
+  color: var(--color-brand);
+  font-weight: 500;
+}
+
+.auth-link a:hover {
+  text-decoration: underline;
 }
 </style>

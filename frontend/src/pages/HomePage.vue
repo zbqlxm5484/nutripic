@@ -54,85 +54,162 @@ import { AppLayout, BaseButton, SafetyNotice } from '../shared/components'
 </script>
 
 <style scoped>
+/* ---- Hero ---- */
 .hero-section {
   display: grid;
-  gap: 18px;
-  padding: 56px 0 48px;
+  gap: var(--space-4);
+  padding: var(--space-8) 0 var(--space-6);
 }
 
 .hero-section__eyebrow {
   margin: 0;
-  color: #4e6f61;
-  font-weight: 700;
+  color: var(--color-brand-muted);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .hero-section h1 {
   margin: 0;
-  color: #165a46;
-  font-size: 3rem;
+  font-size: 42px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0;
+  color: var(--color-text);
 }
 
 .hero-section__description {
-  max-width: 720px;
+  max-width: 600px;
   margin: 0;
-  color: #31443d;
-  font-size: 1.125rem;
-  line-height: 1.7;
+  color: var(--color-text-soft);
+  font-size: 16px;
+  line-height: 1.65;
 }
 
-.hero-section__actions,
-.community-preview {
+.hero-section__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--space-3);
   align-items: center;
 }
 
+/* ---- Value grid ---- */
 .section-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
 }
 
-.info-block,
-.flow-preview,
-.community-preview {
-  padding: 24px;
-  border: 1px solid #dde7e2;
-  border-radius: 8px;
-  background: #ffffff;
+.info-block {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow-raised);
+  transition: box-shadow 200ms;
 }
 
-.info-block h2,
-.flow-preview h2,
-.community-preview h2 {
-  margin: 0 0 10px;
-  font-size: 1.125rem;
+.info-block:hover {
+  box-shadow: var(--shadow-popover);
 }
 
-.info-block p,
-.community-preview p {
+.info-block h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--color-text);
+}
+
+.info-block p {
   margin: 0;
-  color: #5b6b65;
-  line-height: 1.6;
+  color: var(--color-text-soft);
+  font-size: 14px;
+  line-height: 1.65;
 }
 
+/* ---- Flow preview ---- */
 .flow-preview {
-  margin-bottom: 24px;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow-raised);
+  margin-bottom: var(--space-6);
+}
+
+.flow-preview h2 {
+  margin: 0 0 var(--space-4);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--color-text);
 }
 
 .flow-preview ol {
   display: grid;
-  gap: 10px;
+  gap: var(--space-3);
   margin: 0;
-  padding-left: 20px;
-  color: #31443d;
+  padding-left: var(--space-5);
+  color: var(--color-text-soft);
+  font-size: 14px;
+  line-height: 1.6;
 }
 
+/* ---- Community CTA ---- */
 .community-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
   justify-content: space-between;
-  margin-top: 24px;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow-raised);
+  margin-top: var(--space-6);
+}
+
+.community-preview h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--color-text);
+}
+
+.community-preview p {
+  margin: 0;
+  color: var(--color-text-soft);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ---- Responsive ---- */
+@media (min-width: 720px) {
+  .hero-section {
+    gap: var(--space-5);
+    padding: var(--space-16) 0 var(--space-10);
+  }
+
+  .hero-section h1 {
+    font-size: 64px;
+  }
+
+  .hero-section__description {
+    font-size: 18px;
+  }
+
+  .section-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .info-block,
+  .flow-preview,
+  .community-preview {
+    padding: var(--space-6);
+  }
 }
 
 @media (max-width: 820px) {
@@ -140,8 +217,9 @@ import { AppLayout, BaseButton, SafetyNotice } from '../shared/components'
     grid-template-columns: 1fr;
   }
 
-  .hero-section h1 {
-    font-size: 2.375rem;
+  .community-preview {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>
