@@ -1,10 +1,17 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-export function useThreadFeed({ loadItems, initialQuery = {}, getRouteKey = () => '' }) {
+export function useThreadFeed({
+  loadItems,
+  initialQuery = {},
+  getRouteKey = () => '',
+  fallbackItems = [],
+  fallbackErrorMessage = '연결이 불안정해 예시 데이터를 표시합니다.',
+}) {
   const items = ref([])
   const isInitialLoading = ref(true)
   const isLoadingMore = ref(false)
   const loadError = ref('')
+  const isUsingFallback = ref(false)
   const hasMore = ref(false)
   const sentinel = ref(null)
 
@@ -46,8 +53,16 @@ export function useThreadFeed({ loadItems, initialQuery = {}, getRouteKey = () =
     try {
       const response = await loadItems(getListQuery({}, initialQuery))
       applyListResponse(response, { append: false })
+      isUsingFallback.value = false
     } catch (error) {
-      loadError.value = error?.message || '잠시 후 다시 시도해 주세요.'
+      if (fallbackItems.length > 0) {
+        applyListResponse(fallbackItems, { append: false })
+        hasMore.value = false
+        isUsingFallback.value = true
+        loadError.value = fallbackErrorMessage
+      } else {
+        loadError.value = error?.message || '잠시 후 다시 시도해 주세요.'
+      }
     } finally {
       isInitialLoading.value = false
     }
@@ -82,6 +97,7 @@ export function useThreadFeed({ loadItems, initialQuery = {}, getRouteKey = () =
   function resetFeed() {
     items.value = []
     loadedItemIds.clear()
+    isUsingFallback.value = false
     nextCursor = ''
     nextPage = 2
     hasMore.value = false
@@ -92,6 +108,7 @@ export function useThreadFeed({ loadItems, initialQuery = {}, getRouteKey = () =
     isInitialLoading,
     isLoadingMore,
     loadError,
+    isUsingFallback,
     hasMore,
     sentinel,
     loadInitialItems,

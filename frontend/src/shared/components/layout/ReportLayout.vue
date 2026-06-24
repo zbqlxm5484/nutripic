@@ -29,28 +29,20 @@ defineProps({
 </script>
 
 <style scoped>
-.report-layout__header {
-  margin-bottom: 28px;
-}
-
 .report-layout__content {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 24px;
+  gap: var(--space-6);
   align-items: start;
 }
 
 .report-layout__main,
 .report-layout__aside {
   display: grid;
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 @media (max-width: 920px) {
-  .report-layout__header {
-    flex-direction: column;
-  }
-
   .report-layout__content {
     grid-template-columns: 1fr;
   }

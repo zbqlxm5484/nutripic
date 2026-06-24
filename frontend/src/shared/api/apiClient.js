@@ -1,5 +1,6 @@
 import { ApiError, createApiErrorFromResponse, createNetworkError } from './apiError'
 import { authTokenStorage } from './tokenStorage'
+import { getLocalMockResponse } from './localMockApi'
 
 export const API_BASE_URL = '/api/v1'
 
@@ -20,6 +21,11 @@ export function createApiClient({ baseUrl = API_BASE_URL, getAccessToken = authT
     const requestHeaders = createHeaders(headers)
     const accessToken = token ?? (auth ? getAccessToken() : null)
     const requestBody = createRequestBody(body, requestHeaders)
+    const localMockResponse = getLocalMockResponse({ endpoint, method, body, query })
+
+    if (localMockResponse.handled) {
+      return localMockResponse.data
+    }
 
     if (accessToken && !requestHeaders.has('Authorization')) {
       requestHeaders.set('Authorization', `Bearer ${accessToken}`)

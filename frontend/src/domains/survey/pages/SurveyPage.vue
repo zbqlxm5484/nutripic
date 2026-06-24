@@ -266,75 +266,126 @@ function storeLatestReport(report) {
 <style scoped>
 .progress-panel,
 .action-bar {
-  padding: 24px;
-  border: 1px solid #dde7e2;
-  border-radius: 8px;
-  background: #ffffff;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--shadow-raised);
 }
 
 .progress-panel {
   display: grid;
-  gap: 14px;
+  gap: var(--space-4);
 }
 
 .progress-panel__step {
-  margin: 0 0 6px;
-  color: #4e6f61;
-  font-weight: 700;
+  margin: 0 0 var(--space-1);
+  color: var(--color-brand-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .progress-panel h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--color-text);
 }
 
 .progress-panel progress {
   width: 100%;
-  height: 10px;
+  height: 4px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-gray-200);
+  -webkit-appearance: none;
+  appearance: none;
 }
 
+.progress-panel progress::-webkit-progress-bar {
+  background: var(--color-gray-200);
+  border-radius: var(--radius-full);
+}
+
+.progress-panel progress::-webkit-progress-value {
+  background: var(--color-brand);
+  border-radius: var(--radius-full);
+  transition: width 300ms cubic-bezier(0.175, 0.885, 0.32, 1.1);
+}
+
+.progress-panel progress::-moz-progress-bar {
+  background: var(--color-brand);
+  border-radius: var(--radius-full);
+}
+
+/* ---- Chips ---- */
 .chip-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .chip-grid label {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border: 1px solid #c9d8d1;
-  border-radius: 8px;
-  color: #31443d;
+  gap: var(--space-2);
+  min-height: 42px;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  color: var(--color-text-soft);
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 150ms, background 150ms, color 150ms;
+}
+
+.chip-grid label:hover {
+  border-color: var(--color-brand-muted);
+  background: var(--color-gray-alpha-100);
+  color: var(--color-text);
+}
+
+.chip-grid input[type='checkbox'],
+.chip-grid input[type='radio'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 
 .chip-grid__item--checked {
-  border-color: #4e8f70;
-  background: #edf7f2;
-  font-weight: 700;
+  border-color: var(--color-brand);
+  background: var(--color-blue-100);
+  color: var(--color-text);
+  font-weight: 800;
 }
 
 .step-help {
-  margin: 12px 0 0;
-  color: #4e6f61;
-  font-size: 0.875rem;
+  margin: var(--space-3) 0 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
 }
 
 .priority-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
   margin: 0;
-  padding-left: 20px;
-  color: #31443d;
+  padding-left: var(--space-5);
+  color: var(--color-text-soft);
+  font-size: 14px;
 }
 
 .clarification-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
   margin: 0;
-  padding-left: 20px;
-  color: #31443d;
+  padding-left: var(--space-5);
+  color: var(--color-text-soft);
+  font-size: 14px;
 }
 
 textarea.form-control {
@@ -345,8 +396,14 @@ textarea.form-control {
 .action-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--space-3);
   justify-content: flex-end;
 }
 
+@media (min-width: 720px) {
+  .progress-panel,
+  .action-bar {
+    padding: var(--space-6);
+  }
+}
 </style>

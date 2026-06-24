@@ -4,8 +4,8 @@
       <PageHeader
         title-id="community-title"
         eyebrow="커뮤니티"
-        title="건강 고민과 영양제 경험 공유"
-        description="목록과 상세 조회는 비회원도 가능하며, 작성과 댓글은 로그인이 필요합니다."
+        title="오늘의 건강 루틴 이야기"
+        description="짧게 남기고, 이어서 묻고, 서로의 영양제 경험을 가볍게 확인해 보세요."
       >
         <template #actions>
           <BaseButton to="/community/new" variant="primary">게시글 작성</BaseButton>
@@ -35,6 +35,10 @@
       </EmptyState>
 
       <template v-else>
+        <p v-if="isUsingFallback" class="fallback-notice" role="status">
+          {{ loadError }}
+        </p>
+
         <div class="post-list" aria-live="polite">
           <article v-for="post in posts" :key="post.id" class="thread-post">
             <div class="thread-post__rail" aria-hidden="true">
@@ -50,15 +54,17 @@
                 <RouterLink :to="`/community/${post.id}`">{{ post.title }}</RouterLink>
               </h2>
               <p v-if="post.content" class="thread-post__content">{{ truncateContent(post.content) }}</p>
-              <RouterLink class="thread-post__reply" :to="`/community/${post.id}`">
-                답글 {{ post.comment_count ?? 0 }}개 보기
-              </RouterLink>
+              <div class="thread-post__actions" aria-label="게시글 반응">
+                <span>♡ {{ post.like_count ?? 0 }}</span>
+                <RouterLink :to="`/community/${post.id}`">💬 {{ post.comment_count ?? 0 }}</RouterLink>
+                <RouterLink :to="`/community/${post.id}`">↗ 공유</RouterLink>
+              </div>
             </div>
           </article>
         </div>
 
         <ErrorState
-          v-if="loadError"
+          v-if="loadError && !isUsingFallback"
           title="다음 게시글을 불러오지 못했습니다"
           :description="loadError"
         >
@@ -84,6 +90,7 @@ import { useRoute } from 'vue-router'
 import { communityApi } from '../../../shared/api'
 import { AppLayout, BaseButton, EmptyState, ErrorState, LoadingState, PageHeader } from '../../../shared/components'
 import { useThreadFeed } from '../composables/useThreadFeed'
+import { dummyCommunityPosts } from '../data/dummyPosts'
 
 const route = useRoute()
 
@@ -92,6 +99,7 @@ const {
   isInitialLoading,
   isLoadingMore,
   loadError,
+  isUsingFallback,
   hasMore,
   sentinel,
   loadInitialItems: loadInitialPosts,
@@ -101,6 +109,7 @@ const {
   initialQuery: {
     ordering: 'latest',
   },
+  fallbackItems: dummyCommunityPosts,
   getRouteKey: () => route.fullPath,
 })
 
@@ -131,22 +140,23 @@ function truncateContent(value) {
 <style scoped>
 .community-page {
   display: grid;
-  gap: 20px;
+  gap: var(--space-6);
 }
 
 .post-list {
   display: grid;
   margin: 0 auto;
   width: min(100%, 680px);
+  border-top: 1px solid var(--color-border);
 }
 
 .thread-post {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr);
-  gap: 14px;
-  padding: 18px 0;
-  border-bottom: 1px solid #dde7e2;
-  background: #ffffff;
+  gap: var(--space-4);
+  padding: var(--space-5) 0;
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
 }
 
 .thread-post__rail {
@@ -160,58 +170,99 @@ function truncateContent(value) {
   place-items: center;
   width: 40px;
   height: 40px;
-  border-radius: 999px;
-  background: #e4f1eb;
-  color: #165a46;
-  font-weight: 800;
+  border-radius: var(--radius-full);
+  background: var(--color-blue-200);
+  color: var(--color-blue-700);
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .thread-post__line {
-  width: 2px;
+  width: 1px;
   min-height: 100%;
-  background: #edf2ef;
+  background: var(--color-border);
 }
 
 .thread-post__body {
   display: grid;
-  gap: 8px;
+  gap: var(--space-3);
+  min-width: 0;
 }
 
 .thread-post__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: baseline;
   margin: 0;
-  color: #5b6b65;
-  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  font-size: 13px;
 }
 
 .thread-post__meta strong {
-  color: #31443d;
+  color: var(--color-text-soft);
+  font-weight: 500;
 }
 
 .thread-post h2 {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: 18px;
+  font-weight: 600;
   line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.thread-post h2 a {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.thread-post h2 a:hover {
+  text-decoration: underline;
 }
 
 .thread-post__content {
   display: -webkit-box;
   overflow: hidden;
   margin: 0;
-  color: #31443d;
+  color: var(--color-text-soft);
+  font-size: 14px;
   line-height: 1.6;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 3;
 }
 
-.thread-post__reply {
-  width: fit-content;
-  color: #5b6b65;
-  font-size: 0.875rem;
-  font-weight: 700;
+.thread-post__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  align-items: center;
+  padding-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.thread-post__actions a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 150ms;
+}
+
+.thread-post__actions a:hover {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.fallback-notice {
+  margin: 0 auto;
+  width: min(100%, 680px);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-surface);
+  color: var(--color-warning-text);
+  font-size: 13px;
 }
 
 .feed-sentinel {
@@ -221,24 +272,22 @@ function truncateContent(value) {
 .feed-status {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--space-3);
   align-items: center;
   justify-content: center;
   min-height: 48px;
+  padding: var(--space-4) 0;
 }
 
 .feed-status span {
-  color: #5b6b65;
+  color: var(--color-text-muted);
+  font-size: 13px;
 }
 
-a {
-  color: #165a46;
-}
-
-@media (max-width: 760px) {
+@media (max-width: 600px) {
   .thread-post {
     grid-template-columns: 40px minmax(0, 1fr);
-    gap: 10px;
+    gap: var(--space-3);
   }
 }
 </style>
