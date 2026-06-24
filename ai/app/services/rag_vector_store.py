@@ -113,6 +113,7 @@ def validate_vector_index(index: dict[str, Any]) -> None:
 def search_vector_index(
     *,
     query_text: str,
+    query_bundle: dict[str, Any] | None = None,
     source_types: set[str],
     top_k: int,
     score_threshold: float = DEFAULT_SCORE_THRESHOLD,
@@ -131,7 +132,10 @@ def search_vector_index(
             continue
 
         score = calculate_cosine_score(query_embedding, document.get("embedding", []))
-        score = round(min(0.99, score + calculate_metadata_boost(query_terms, document)), 4)
+        score = round(
+            min(0.99, score + calculate_metadata_boost(query_terms, document, query_bundle)),
+            4,
+        )
         if score < score_threshold:
             continue
 
@@ -151,7 +155,11 @@ def search_vector_index(
     return scored_results[:normalize_top_k(top_k)]
 
 
-def calculate_metadata_boost(query_terms: list[str], document: dict[str, Any]) -> float:
+def calculate_metadata_boost(
+    query_terms: list[str],
+    document: dict[str, Any],
+    query_bundle: dict[str, Any] | None = None,
+) -> float:
     metadata = document.get("metadata", {})
     query_set = set(query_terms)
     boost = 0.0
@@ -163,7 +171,38 @@ def calculate_metadata_boost(query_terms: list[str], document: dict[str, Any]) -
     if query_set.intersection(tokenize(str(document.get("title", "")))):
         boost += 0.02
 
+    if document.get("source_type") == "idisk":
+        boost += calculate_idisk_query_bundle_boost(metadata, query_bundle or {})
+
     return boost
+
+
+def calculate_idisk_query_bundle_boost(
+    metadata: dict[str, Any],
+    query_bundle: dict[str, Any],
+) -> float:
+    idisk_bundle = query_bundle.get("idisk") or {}
+    boost = 0.0
+
+    if metadata.get("dsi_id") in as_string_set(idisk_bundle.get("ingredient_ids", [])):
+        boost += 0.12
+    if metadata.get("disease_id") in as_string_set(idisk_bundle.get("condition_ids", [])):
+        boost += 0.12
+    if metadata.get("target_id") in as_string_set(idisk_bundle.get("drug_ids", [])):
+        boost += 0.12
+    if metadata.get("relation") in as_string_set(idisk_bundle.get("relation_targets", [])):
+        boost += 0.05
+
+    return boost
+
+
+def as_string_set(value: Any) -> set[str]:
+    if isinstance(value, list):
+        return {str(item) for item in value}
+    if value:
+        return {str(value)}
+
+    return set()
 
 
 def calculate_cosine_score(

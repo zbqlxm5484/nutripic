@@ -11,6 +11,7 @@ class RagSearchFilters(BaseModel):
 class RagSearchRequest(BaseModel):
     request_id: str
     search_queries: list[str]
+    rag_query_bundle: dict[str, Any] = Field(default_factory=dict)
     filters: RagSearchFilters = Field(default_factory=RagSearchFilters)
 
 

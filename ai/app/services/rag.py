@@ -1,3 +1,5 @@
+from typing import Any
+
 from app.core.config import settings
 from app.core.errors import raise_api_error
 from app.schemas.rag import RagSearchRequest, RagSearchResponse
@@ -12,6 +14,7 @@ def search_rag(payload: RagSearchRequest) -> RagSearchResponse:
     try:
         results = search_selected_backend(
             query_text=" ".join(payload.search_queries),
+            query_bundle=payload.rag_query_bundle,
             source_types=set(payload.filters.source_types or []),
             top_k=payload.filters.top_k,
         )
@@ -26,7 +29,13 @@ def search_rag(payload: RagSearchRequest) -> RagSearchResponse:
     return RagSearchResponse(results=results)
 
 
-def search_selected_backend(*, query_text: str, source_types: set[str], top_k: int):
+def search_selected_backend(
+    *,
+    query_text: str,
+    query_bundle: dict[str, Any],
+    source_types: set[str],
+    top_k: int,
+):
     if settings.rag_vector_backend == "chroma":
         return search_chroma_index(
             query_text=query_text,
@@ -37,6 +46,7 @@ def search_selected_backend(*, query_text: str, source_types: set[str], top_k: i
     if settings.rag_vector_backend == "local_json":
         return search_vector_index(
             query_text=query_text,
+            query_bundle=query_bundle,
             source_types=source_types,
             top_k=top_k,
         )

@@ -9,7 +9,6 @@ from app.schemas.guardrails import OutputGuardrailRequest, OutputGuardrailRespon
 from app.schemas.reports import ReportGenerateRequest, ReportGenerateResponse
 from app.services.guardrails import DEFAULT_SAFE_MESSAGE, check_output_guardrail
 
-
 SYSTEM_PROMPT = (
     "You are the internal AI generation layer for Neutripic. "
     "Return only valid JSON that matches the requested schema. "
@@ -69,7 +68,9 @@ def apply_report_output_guardrail(
         return with_report_guardrail(candidate, guardrail)
 
     if is_llm_enabled():
-        rewrite = rewrite_report_response(payload, candidate, fallback_response, guardrail)
+        rewrite = rewrite_report_response(
+            payload, candidate, fallback_response, guardrail
+        )
         if rewrite:
             rewrite_guardrail = check_output_guardrail(
                 OutputGuardrailRequest(
@@ -132,7 +133,9 @@ def rewrite_report_response(
             safe_message=guardrail.safe_message,
             source_context={
                 "normalized_input": payload.normalized_input.model_dump(),
-                "rag_contexts": [context.model_dump() for context in payload.rag_contexts],
+                "rag_contexts": [
+                    context.model_dump() for context in payload.rag_contexts
+                ],
                 "fallback_response": fallback_response.model_dump(),
             },
         )
@@ -155,7 +158,9 @@ def rewrite_chat_response(
             source_context={
                 "report_context": payload.report_context.model_dump(),
                 "message": payload.message.model_dump(),
-                "recent_messages": [message.model_dump() for message in payload.recent_messages],
+                "recent_messages": [
+                    message.model_dump() for message in payload.recent_messages
+                ],
             },
         )
     )
@@ -218,17 +223,23 @@ def build_blocked_report_response(
     blocked.lifestyle_tips = []
     blocked.disclaimer = guardrail.safe_message or DEFAULT_SAFE_MESSAGE
     blocked.citations = []
-    blocked.guardrail_result = GuardrailResult(is_allowed=False, risk_level=guardrail.risk_level)
+    blocked.guardrail_result = GuardrailResult(
+        is_allowed=False, risk_level=guardrail.risk_level
+    )
     blocked.input_summary.age = payload.normalized_input.age
     blocked.input_summary.gender = payload.normalized_input.gender
     return blocked
 
 
-def build_blocked_chat_response(guardrail: OutputGuardrailResponse) -> ChatRespondResponse:
+def build_blocked_chat_response(
+    guardrail: OutputGuardrailResponse,
+) -> ChatRespondResponse:
     return ChatRespondResponse(
         content=guardrail.safe_message or DEFAULT_SAFE_MESSAGE,
         citations=[],
-        guardrail_result=GuardrailResult(is_allowed=False, risk_level=guardrail.risk_level),
+        guardrail_result=GuardrailResult(
+            is_allowed=False, risk_level=guardrail.risk_level
+        ),
     )
 
 
@@ -338,7 +349,9 @@ def build_chat_prompt(
             "output_schema": build_chat_output_schema(),
             "report_context": payload.report_context.model_dump(),
             "message": payload.message.model_dump(),
-            "recent_messages": [message.model_dump() for message in payload.recent_messages],
+            "recent_messages": [
+                message.model_dump() for message in payload.recent_messages
+            ],
             "fallback_response": fallback_response.model_dump(),
             "rules": [
                 "Use Korean for user-facing text.",
