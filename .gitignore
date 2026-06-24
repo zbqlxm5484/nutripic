@@ -10,6 +10,7 @@ venv/
 env/
 ENV/
 backend/.venv/
+ai/.venv/
 
 # Django / local database
 *.sqlite3
@@ -20,6 +21,9 @@ backend/db.sqlite3
 .env
 .env.*
 !.env.example
+ai/.env
+ai/.env.*
+!ai/.env.example
 
 # Test / coverage
 .coverage
