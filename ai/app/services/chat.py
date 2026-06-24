@@ -1,20 +1,25 @@
 from app.schemas.chat import ChatRespondRequest, ChatRespondResponse
 from app.schemas.common import Citation, GuardrailResult
+from app.services.llm_generation import generate_chat_with_llm
 
 DEFAULT_SAFE_MESSAGE = "의학적 진단, 처방, 약물 변경은 제공할 수 없습니다. 질환이 있거나 약을 복용 중인 경우 전문가와 상담하세요."
 
 HIGH_RISK_CHAT_KEYWORDS = [
     "진단",
     "처방",
-    "약 끊",
+    "복용량",
     "약 중단",
-    "약 늘",
-    "약 줄",
+    "수술",
     "치료",
 ]
 
 
 def respond_chat(payload: ChatRespondRequest) -> ChatRespondResponse:
+    fallback_response = build_template_chat_response(payload)
+    return generate_chat_with_llm(payload, fallback_response)
+
+
+def build_template_chat_response(payload: ChatRespondRequest) -> ChatRespondResponse:
     message = payload.message.content
 
     if is_high_risk_question(message):
@@ -30,7 +35,7 @@ def respond_chat(payload: ChatRespondRequest) -> ChatRespondResponse:
         content = (
             f"{ingredient.name_ko}({ingredient.name_en})에 대한 질문으로 이해했습니다. "
             "일반적으로 건강기능식품 성분은 개인의 상태, 복용 중인 약, 제품 형태에 따라 섭취 방법이 달라질 수 있습니다. "
-            f"특히 {', '.join(ingredient.precautions) if ingredient.precautions else '주의사항을 확인해야 합니다'} "
+            f"특히 {', '.join(ingredient.precautions) if ingredient.precautions else '주의사항을 확인해야 합니다.'} "
             "질환이 있거나 약을 복용 중인 경우 전문가와 상담하세요."
         )
 
@@ -51,7 +56,7 @@ def respond_chat(payload: ChatRespondRequest) -> ChatRespondResponse:
     return ChatRespondResponse(
         content=(
             "해당 질문은 현재 저장된 리포트의 추천 성분 정보 안에서 명확히 확인하기 어렵습니다. "
-            "리포트에 포함된 성분, 섭취 시 주의사항, 일반적인 건강기능식품 정보 범위에서 다시 질문해 주세요."
+            "리포트에 포함된 성분, 섭취 및 주의사항, 일반적인 건강기능식품 정보 범위에서 다시 질문해 주세요."
         ),
         citations=[],
         guardrail_result=GuardrailResult(is_allowed=True, risk_level="low"),
