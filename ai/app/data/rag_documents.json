@@ -1,0 +1,48 @@
+[
+  {
+    "document_id": "functional_ingredient_magnesium",
+    "source_type": "functional_ingredient",
+    "source_name": "건강기능식품 기능성원료 인정현황",
+    "title": "마그네슘",
+    "content": "마그네슘은 정상적인 근육 기능 유지에 필요한 기능성 원료입니다. 개인의 질환, 복용 중인 약, 제품별 함량에 따라 섭취 시 주의가 필요합니다.",
+    "metadata": {
+      "ingredient_name_ko": "마그네슘",
+      "ingredient_name_en": "Magnesium",
+      "normalized_name": "magnesium",
+      "daily_dosage": "기능성원료 인정현황과 제품 표시사항의 일일섭취량 범위를 따르세요.",
+      "expected_effects": ["정상적인 근육 기능 유지"],
+      "side_effects": ["설사", "복부 불편감"],
+      "precautions": ["신장 질환이 있는 경우 전문가와 상담하세요."],
+      "keywords": ["fatigue", "sleep", "muscle", "magnesium", "피로", "수면", "근육"]
+    }
+  },
+  {
+    "document_id": "idisk_sleep_fatigue_magnesium",
+    "source_type": "idisk",
+    "source_name": "iDISK 증상/성분 데이터",
+    "title": "피로와 수면 관련 성분 후보",
+    "content": "피로와 수면 관리 맥락에서 마그네슘은 관련 성분 후보로 검색될 수 있습니다. 사용자의 증상, 생활습관, 복용 약 정보를 함께 고려해야 합니다.",
+    "metadata": {
+      "symptoms": ["fatigue", "sleep"],
+      "related_ingredients": ["magnesium"],
+      "keywords": ["fatigue", "sleep", "magnesium", "피로", "수면", "마그네슘"]
+    }
+  },
+  {
+    "document_id": "functional_ingredient_omega3",
+    "source_type": "functional_ingredient",
+    "source_name": "건강기능식품 기능성원료 인정현황",
+    "title": "EPA 및 DHA 함유 유지",
+    "content": "EPA 및 DHA 함유 유지는 혈중 중성지질 개선과 혈행 개선에 도움을 줄 수 있는 기능성 원료입니다. 항응고제 복용 중이거나 수술을 앞둔 경우 전문가 상담이 필요합니다.",
+    "metadata": {
+      "ingredient_name_ko": "EPA 및 DHA 함유 유지",
+      "ingredient_name_en": "Omega-3 fatty acids",
+      "normalized_name": "omega_3",
+      "daily_dosage": "기능성원료 인정현황과 제품 표시사항의 일일섭취량 범위를 따르세요.",
+      "expected_effects": ["혈중 중성지질 개선", "혈행 개선"],
+      "side_effects": ["위장 불편감", "비린맛 역류"],
+      "precautions": ["항응고제 복용 중이거나 수술 예정인 경우 전문가와 상담하세요."],
+      "keywords": ["omega", "omega_3", "epa", "dha", "anticoagulant", "blood", "오메가", "혈행", "항응고제"]
+    }
+  }
+]
