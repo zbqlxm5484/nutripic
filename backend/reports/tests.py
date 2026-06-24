@@ -54,11 +54,21 @@ class FakeAIClient:
                 'additional_terms': [],
             },
             'search_queries': ['fatigue supplements'],
+            'rag_query_bundle': {
+                'idisk': {
+                    'ingredient_ids': [],
+                    'condition_ids': ['DIS000000'],
+                    'drug_ids': ['D000000'],
+                    'relation_targets': ['is_effective_for', 'interacts_with'],
+                },
+                'text_queries': ['fatigue supplements'],
+            },
             'needs_clarification': False,
             'questions': [],
         }
 
     def rag_search(self, payload):
+        assert payload['rag_query_bundle']['idisk']['condition_ids'] == ['DIS000000']
         return {
             'results': [
                 {
@@ -150,6 +160,24 @@ class FakeAIClient:
                 }
             ],
         }
+
+
+class FakeBlockingChatInputAIClient(FakeAIClient):
+    def input_guardrail(self, payload):
+        if payload['task_type'] == 'report_chat':
+            return {
+                'is_allowed': False,
+                'risk_level': 'medium',
+                'blocked_reason': 'out_of_scope',
+                'safe_message': '리포트와 관련된 건강기능식품 질문만 답변할 수 있습니다.',
+                'needs_clarification': False,
+                'questions': [],
+            }
+
+        return super().input_guardrail(payload)
+
+    def chat_respond(self, payload):
+        raise AssertionError('chat_respond should not be called when input guardrail blocks')
 
 
 class SurveyMetadataApiTests(APITestCase):
@@ -292,3 +320,29 @@ class ReportApiTests(APITestCase):
         self.assertEqual(message_response.data['role'], 'assistant')
         self.assertIn('content', message_response.data)
         self.assertIn('citations', message_response.data)
+
+    def test_report_message_blocks_out_of_scope_input(self):
+        create_response = self.create_report()
+        report_id = create_response.data['id']
+
+        with patch(
+            'reports.services.get_ai_client',
+            return_value=FakeBlockingChatInputAIClient(),
+        ):
+            message_response = self.client.post(
+                f'/api/v1/reports/{report_id}/messages/',
+                {'content': '오늘 축구 경기 결과 알려줘'},
+                format='json',
+            )
+
+        self.assertEqual(message_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            message_response.data['content'],
+            '리포트와 관련된 건강기능식품 질문만 답변할 수 있습니다.',
+        )
+        self.assertEqual(message_response.data['guardrail_result']['is_allowed'], False)
+        self.assertEqual(
+            message_response.data['guardrail_result']['blocked_reason'],
+            'out_of_scope',
+        )
+        self.assertEqual(message_response.data['citations'], [])

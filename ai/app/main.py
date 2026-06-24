@@ -11,3 +11,8 @@ app.include_router(normalize.router, prefix="/internal/ai/v1")
 app.include_router(rag.router, prefix="/internal/ai/v1")
 app.include_router(reports.router, prefix="/internal/ai/v1")
 app.include_router(chat.router, prefix="/internal/ai/v1")
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}

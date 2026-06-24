@@ -6,7 +6,22 @@ from app.schemas.rag import RagSearchFilters, RagSearchRequest
 from app.schemas.rag import RagSearchResult
 from app.services import rag
 from app.services.rag import search_rag
+from app.services import rag_vector_store
 from app.services.rag_vector_store import RagVectorStoreUnavailable
+
+
+def build_test_vector_document(document_id, metadata):
+    text = "shared supplement evidence"
+    return {
+        "document_id": document_id,
+        "source_type": "idisk",
+        "source_name": "iDISK",
+        "title": document_id,
+        "content": text,
+        "metadata": metadata,
+        "terms": rag_vector_store.tokenize(text),
+        "embedding": rag_vector_store.embed_text(text),
+    }
 
 
 def test_rag_search_returns_ranked_local_documents():
@@ -23,6 +38,75 @@ def test_rag_search_returns_ranked_local_documents():
     assert {result.source_type for result in response.results}.issubset(
         {"idisk", "functional_ingredient"}
     )
+
+
+def test_rag_search_accepts_missing_query_bundle():
+    response = search_rag(
+        RagSearchRequest(
+            request_id="req_test_rag",
+            search_queries=["5-HTP serotonin"],
+            filters=RagSearchFilters(source_types=["idisk"], top_k=1),
+        )
+    )
+
+    assert len(response.results) == 1
+
+
+def test_rag_search_boosts_idisk_condition_ids(monkeypatch):
+    documents = (
+        build_test_vector_document("doc_unmatched_condition", {"disease_id": "DIS_OTHER"}),
+        build_test_vector_document("doc_matched_condition", {"disease_id": "DIS_MATCH"}),
+    )
+    monkeypatch.setattr(rag_vector_store, "load_vector_documents", lambda: documents)
+
+    response = search_rag(
+        RagSearchRequest(
+            request_id="req_test_rag",
+            search_queries=["shared supplement"],
+            rag_query_bundle={"idisk": {"condition_ids": ["DIS_MATCH"]}},
+            filters=RagSearchFilters(source_types=["idisk"], top_k=2),
+        )
+    )
+
+    assert response.results[0].document_id == "doc_matched_condition"
+
+
+def test_rag_search_boosts_idisk_drug_ids(monkeypatch):
+    documents = (
+        build_test_vector_document("doc_unmatched_drug", {"target_id": "D_OTHER"}),
+        build_test_vector_document("doc_matched_drug", {"target_id": "D_MATCH"}),
+    )
+    monkeypatch.setattr(rag_vector_store, "load_vector_documents", lambda: documents)
+
+    response = search_rag(
+        RagSearchRequest(
+            request_id="req_test_rag",
+            search_queries=["shared supplement"],
+            rag_query_bundle={"idisk": {"drug_ids": ["D_MATCH"]}},
+            filters=RagSearchFilters(source_types=["idisk"], top_k=2),
+        )
+    )
+
+    assert response.results[0].document_id == "doc_matched_drug"
+
+
+def test_rag_search_boosts_idisk_ingredient_ids(monkeypatch):
+    documents = (
+        build_test_vector_document("doc_unmatched_ingredient", {"dsi_id": "DSI_OTHER"}),
+        build_test_vector_document("doc_matched_ingredient", {"dsi_id": "DSI_MATCH"}),
+    )
+    monkeypatch.setattr(rag_vector_store, "load_vector_documents", lambda: documents)
+
+    response = search_rag(
+        RagSearchRequest(
+            request_id="req_test_rag",
+            search_queries=["shared supplement"],
+            rag_query_bundle={"idisk": {"ingredient_ids": ["DSI_MATCH"]}},
+            filters=RagSearchFilters(source_types=["idisk"], top_k=2),
+        )
+    )
+
+    assert response.results[0].document_id == "doc_matched_ingredient"
 
 
 def test_rag_search_applies_source_type_filter():

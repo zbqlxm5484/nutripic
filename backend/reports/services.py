@@ -63,6 +63,7 @@ def generate_report(request_data, user=None):
         {
             'request_id': request_id,
             'search_queries': normalize_response['search_queries'],
+            'rag_query_bundle': normalize_response.get('rag_query_bundle', {}),
             'filters': {
                 'source_types': ['idisk', 'functional_ingredient'],
                 'top_k': 8,
@@ -102,6 +103,59 @@ def generate_report(request_data, user=None):
 def generate_report_chat_response(report, content, user=None):
     request_id = create_request_id()
     client = get_ai_client()
+    report_context = build_report_context(report)
+
+    input_guardrail = call_ai(
+        client.input_guardrail,
+        {
+            'request_id': request_id,
+            'user_id': get_user_id(user or report.user),
+            'task_type': 'report_chat',
+            'input_text': content,
+            'structured_input': {
+                'report_id': report.id,
+                'report_title': report.title,
+                'allowed_scope': [
+                    'report_follow_up',
+                    'ingredient_information',
+                    'intake_precautions',
+                    'citation_questions',
+                ],
+            },
+            'report_context': report_context,
+        },
+    )
+    if input_guardrail.get('is_allowed') is False:
+        return {
+            'role': 'assistant',
+            'content': (
+                input_guardrail.get('safe_message')
+                or '리포트와 관련된 건강기능식품 질문에 대해서만 답변할 수 있습니다.'
+            ),
+            'guardrail_result': {
+                'is_allowed': False,
+                'risk_level': input_guardrail.get('risk_level', 'medium'),
+                'blocked_reason': input_guardrail.get('blocked_reason'),
+            },
+            'citations': [],
+        }
+    if input_guardrail.get('needs_clarification'):
+        questions = input_guardrail.get('questions') or []
+        message = (
+            questions[0].get('message')
+            if questions and isinstance(questions[0], dict)
+            else '질문을 조금 더 구체적으로 입력해 주세요.'
+        )
+        return {
+            'role': 'assistant',
+            'content': message,
+            'guardrail_result': {
+                'is_allowed': True,
+                'risk_level': input_guardrail.get('risk_level', 'low'),
+                'needs_clarification': True,
+            },
+            'citations': [],
+        }
 
     chat_response = call_ai(
         client.chat_respond,
@@ -109,7 +163,7 @@ def generate_report_chat_response(report, content, user=None):
             'request_id': request_id,
             'user_id': get_user_id(user or report.user),
             'report_id': report.id,
-            'report_context': build_report_context(report),
+            'report_context': report_context,
             'message': {
                 'content': content,
             },
