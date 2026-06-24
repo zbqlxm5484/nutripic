@@ -16,6 +16,7 @@
 
 - `api/backend-api-spec.md`: 프론트엔드가 호출하는 Django REST API 명세.
 - `api/ai-api-spec.md`: 백엔드가 호출하는 내부 AI/RAG 서버 API 명세.
+- `ai-rag-data-structuring-plan.md`: AI/RAG에 사용할 기능성원료, 연구 근거, iDISK 데이터 구조화 계획.
 
 ## 프론트엔드
 
