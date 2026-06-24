@@ -1,11 +1,155 @@
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APITestCase
+from unittest.mock import patch
 
 from .models import HealthGoal, MedicationOption, Report, SpecialConditionOption
 
 
 User = get_user_model()
+
+
+class FakeAIClient:
+    def input_guardrail(self, payload):
+        return {
+            'is_allowed': True,
+            'risk_level': 'low',
+            'blocked_reason': None,
+            'safe_message': None,
+            'needs_clarification': False,
+            'questions': [],
+        }
+
+    def normalize(self, payload):
+        return {
+            'normalized_input': {
+                'health_goals': [
+                    {
+                        'code': item['code'],
+                        'name_ko': item['name'],
+                        'name_en': item['code'],
+                        'priority': item['priority'],
+                        'confidence': 0.95,
+                    }
+                    for item in payload['health_goals']
+                ],
+                'medications': [
+                    {
+                        'code': item['code'],
+                        'name_ko': item['name'],
+                        'name_en': item['code'],
+                        'confidence': 0.95,
+                    }
+                    for item in payload.get('medications', [])
+                ],
+                'special_conditions': [
+                    {
+                        'code': item['code'],
+                        'name_ko': item['name'],
+                        'name_en': item['code'],
+                        'confidence': 0.95,
+                    }
+                    for item in payload.get('special_conditions', [])
+                ],
+                'additional_terms': [],
+            },
+            'search_queries': ['fatigue supplements'],
+            'needs_clarification': False,
+            'questions': [],
+        }
+
+    def rag_search(self, payload):
+        return {
+            'results': [
+                {
+                    'document_id': 'functional_ingredient_magnesium',
+                    'source_type': 'functional_ingredient',
+                    'source_name': '건강기능식품 기능성원료 인정현황',
+                    'title': '마그네슘',
+                    'content': '기능성, 일일섭취량, 섭취 시 주의사항 요약',
+                    'score': 0.91,
+                    'metadata': {
+                        'ingredient_name_ko': '마그네슘',
+                        'ingredient_name_en': 'Magnesium',
+                        'normalized_name': 'magnesium',
+                        'daily_dosage': '기능성 원료 인정현황 기준 범위 내에서 섭취하세요.',
+                        'expected_effects': ['수면 질 관리', '근육 기능 유지'],
+                        'side_effects': ['설사', '복부 불편감'],
+                        'precautions': ['질환이 있거나 약을 복용 중인 경우 전문가와 상담하세요.'],
+                    },
+                }
+            ],
+        }
+
+    def generate_report(self, payload):
+        normalized_input = payload['normalized_input']
+
+        return {
+            'status': 'completed',
+            'title': 'Fatigue 개선을 위한 성분 리포트',
+            'input_summary': {
+                'age': normalized_input['age'],
+                'gender': normalized_input['gender'],
+                'health_goals': ['Fatigue'],
+                'medications': ['Anticoagulant'],
+                'special_conditions': ['Allergy'],
+                'additional_notes': normalized_input.get('additional_notes', ''),
+            },
+            'recommended_ingredients': [
+                {
+                    'name_ko': '마그네슘',
+                    'name_en': 'Magnesium',
+                    'normalized_name': 'magnesium',
+                    'reason': '수면과 근육 이완 관련 기능성 근거가 있어 후보로 선정되었습니다.',
+                    'expected_effects': ['수면 질 관리', '근육 기능 유지'],
+                    'recommended_dosage': '기능성 원료 인정현황 기준 범위 내에서 섭취하세요.',
+                    'side_effects': ['설사', '복부 불편감'],
+                    'precautions': ['질환이 있거나 약을 복용 중인 경우 전문가와 상담하세요.'],
+                }
+            ],
+            'lifestyle_tips': ['카페인 섭취 시간과 양을 조절해 보세요.'],
+            'disclaimer': '질환이 있거나 약을 복용 중인 경우 전문가와 상담하세요.',
+            'citations': [
+                {
+                    'source_type': 'functional_ingredient',
+                    'source_name': '건강기능식품 기능성원료 인정현황',
+                    'document_id': 'functional_ingredient_magnesium',
+                }
+            ],
+            'guardrail_result': {
+                'is_allowed': True,
+                'risk_level': 'low',
+            },
+        }
+
+    def output_guardrail(self, payload):
+        return {
+            'is_allowed': True,
+            'risk_level': 'low',
+            'blocked_reason': None,
+            'safe_message': None,
+            'required_fixes': [],
+        }
+
+    def chat_respond(self, payload):
+        return {
+            'content': (
+                '일반적으로 리포트에 포함된 성분은 개인의 건강 상태와 복용 중인 약을 '
+                '함께 고려해 섭취 여부를 판단하는 것이 좋습니다. 질환이 있거나 약을 '
+                '복용 중인 경우 전문가와 상담하세요.'
+            ),
+            'guardrail_result': {
+                'is_allowed': True,
+                'risk_level': 'low',
+            },
+            'citations': [
+                {
+                    'source_type': 'functional_ingredient',
+                    'source_name': '건강기능식품 기능성원료 인정현황',
+                    'document_id': 'functional_ingredient_magnesium',
+                }
+            ],
+        }
 
 
 class SurveyMetadataApiTests(APITestCase):
@@ -44,6 +188,13 @@ class SurveyMetadataApiTests(APITestCase):
 
 class ReportApiTests(APITestCase):
     def setUp(self):
+        self.ai_client_patcher = patch(
+            'reports.services.get_ai_client',
+            return_value=FakeAIClient(),
+        )
+        self.ai_client_patcher.start()
+        self.addCleanup(self.ai_client_patcher.stop)
+
         self.user = User.objects.create_user(
             email='user@example.com',
             username='neutripic_user',
