@@ -75,7 +75,8 @@ class RecommendedIngredient(BaseModel):
     recommended_dosage: str
     side_effects: list[str] = Field(default_factory=list)
     precautions: list[str] = Field(default_factory=list)
-    # AI는 iherb 링크를 생성하지 않는다. 백엔드가 IngredientLinkMapping에서 주입한다.
+    # AI는 엔티티 사전 기반 iHerb 카테고리 링크만 제공한다.
+    # 백엔드는 allowlist 검증 및 DB override를 담당한다.
     iherb_url: str | None = None
     iherb_category_name: str | None = None
 

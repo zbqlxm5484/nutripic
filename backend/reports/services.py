@@ -1,4 +1,5 @@
 import uuid
+from urllib.parse import urlparse
 
 from rest_framework import status
 from rest_framework.exceptions import APIException
@@ -154,6 +155,7 @@ def generate_report_chat_response(report, content, user=None):
             'citations': [],
         }
 
+    report_context = build_report_context(report)
     chat_response = call_ai(
         client.chat_respond,
         {
@@ -224,19 +226,17 @@ def inject_iherb_links(ingredients: list) -> None:
 
     mappings = IngredientLinkMapping.objects.filter(
         normalized_name__in=normalized_names,
-        is_active=True,
     )
 
-    from urllib.parse import urlparse
-
     mapping_dict = {}
+    blocked_names = set()
     for mapping in mappings:
-        try:
-            parsed = urlparse(mapping.iherb_url)
-            if parsed.netloc in IHERB_ALLOWED_DOMAINS:
-                mapping_dict[mapping.normalized_name] = mapping
-        except Exception:
-            pass
+        if not mapping.is_active:
+            blocked_names.add(mapping.normalized_name)
+        elif is_iherb_url_allowed(mapping.iherb_url):
+            mapping_dict[mapping.normalized_name] = mapping
+        else:
+            blocked_names.add(mapping.normalized_name)
 
     for ingredient in ingredients:
         normalized_name = ingredient.get('normalized_name', '')
@@ -244,9 +244,24 @@ def inject_iherb_links(ingredients: list) -> None:
         if mapping:
             ingredient['iherb_url'] = mapping.iherb_url
             ingredient['iherb_category_name'] = mapping.iherb_category_name or None
+        elif normalized_name in blocked_names:
+            ingredient['iherb_url'] = None
+            ingredient['iherb_category_name'] = None
+        elif is_iherb_url_allowed(ingredient.get('iherb_url')):
+            ingredient['iherb_category_name'] = ingredient.get('iherb_category_name') or None
         else:
-            ingredient.setdefault('iherb_url', None)
-            ingredient.setdefault('iherb_category_name', None)
+            ingredient['iherb_url'] = None
+            ingredient['iherb_category_name'] = None
+
+
+def is_iherb_url_allowed(url: str | None) -> bool:
+    if not url:
+        return False
+    try:
+        parsed = urlparse(url)
+        return parsed.scheme == 'https' and parsed.netloc in IHERB_ALLOWED_DOMAINS
+    except Exception:
+        return False
 
 
 def create_request_id():

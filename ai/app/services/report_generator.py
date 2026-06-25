@@ -8,6 +8,7 @@ from app.schemas.reports import (
 )
 from app.services.guardrails import filter_valid_citations
 from app.services.llm_generation import generate_report_with_llm
+from app.services.entity_dictionary import iherb_mapping_for
 
 DEFAULT_DISCLAIMER = "질환이 있거나 약을 복용 중인 경우 전문가와 상담하세요."
 
@@ -22,7 +23,9 @@ def generate_report(payload: ReportGenerateRequest) -> ReportGenerateResponse:
         return clarification_response
 
     fallback_response = build_template_report(payload)
-    return generate_report_with_llm(payload, fallback_response)
+    response = generate_report_with_llm(payload, fallback_response)
+    apply_iherb_mappings(response.recommended_ingredients)
+    return response
 
 
 def build_template_report(payload: ReportGenerateRequest) -> ReportGenerateResponse:
@@ -100,6 +103,7 @@ def build_recommended_ingredients(payload: ReportGenerateRequest) -> list[Recomm
     ingredients = []
     for context in sorted_contexts:
         metadata = context.metadata
+        ingredient_name = metadata.get("ingredient_name_ko") or context.title
         precautions = list(metadata.get("precautions", [DEFAULT_DISCLAIMER]))
 
         # 약물/질환 위험 신호 탐지 및 precautions 보강
@@ -126,6 +130,17 @@ def build_recommended_ingredients(payload: ReportGenerateRequest) -> list[Recomm
         )
 
     return ingredients
+
+
+def apply_iherb_mappings(ingredients: list[RecommendedIngredient]) -> None:
+    for ingredient in ingredients:
+        mapping = iherb_mapping_for(ingredient.normalized_name)
+        if mapping:
+            ingredient.iherb_url = mapping["iherb_url"]
+            ingredient.iherb_category_name = mapping["iherb_category_name"]
+        else:
+            ingredient.iherb_url = None
+            ingredient.iherb_category_name = None
 
 
 def _detect_risk_signals(metadata: dict, risk_terms: set[str]) -> list[str]:
