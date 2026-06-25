@@ -596,6 +596,58 @@ def test_report_generate_iherb_fields_are_dictionary_mapped():
     assert "추천 적합도는" in body["disclaimer"]
 
 
+def test_report_generate_canonicalizes_iherb_alias_name():
+    response = client.post(
+        "/internal/ai/v1/reports/generate/",
+        headers=HEADERS,
+        json={
+            "request_id": "req_test_iherb_alias",
+            "user_id": 1,
+            "normalized_input": {
+                "age": 30,
+                "gender": "female",
+                "health_goals": [
+                    {
+                        "code": "immunity",
+                        "name_ko": "면역 관리",
+                        "name_en": "immune_support",
+                        "priority": 1,
+                        "confidence": 0.98,
+                    }
+                ],
+                "medications": [],
+                "special_conditions": [],
+                "additional_notes": "",
+                "additional_terms": [],
+            },
+            "rag_contexts": [
+                {
+                    "document_id": "functional_ingredient_chlorella",
+                    "source_type": "functional_ingredient",
+                    "source_name": "건강기능식품 기능성원료 인정현황",
+                    "title": "클로렐라 고시형 원료로 전환",
+                    "content": "기능성 요약",
+                    "metadata": {
+                        "ingredient_name_ko": "클로렐라 고시형 원료로 전환",
+                        "ingredient_name_en": "",
+                        "normalized_name": "클로렐라_고시형_원료로_전환",
+                        "daily_dosage": "기준 범위 내 섭취",
+                        "expected_effects": ["면역 기능"],
+                        "side_effects": [],
+                        "precautions": [],
+                    },
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    ingredient = response.json()["recommended_ingredients"][0]
+    assert ingredient["name_ko"] == "클로렐라"
+    assert ingredient["normalized_name"] == "클로렐라"
+    assert ingredient.get("iherb_url") is None
+
+
 def test_report_generate_uses_functional_claims_reason_and_goal_tips():
     response = client.post(
         "/internal/ai/v1/reports/generate/",

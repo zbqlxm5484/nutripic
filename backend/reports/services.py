@@ -1,10 +1,11 @@
 import uuid
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from rest_framework import status
 from rest_framework.exceptions import APIException
 
 from .ai_client import AIClientError, AIServiceUnavailableError, get_ai_client
+from .iherb_dictionary import match_iherb_ingredient
 from .models import IHERB_ALLOWED_DOMAINS, IngredientLinkMapping
 
 
@@ -231,14 +232,24 @@ def inject_iherb_links(ingredients: list) -> None:
     if not ingredients:
         return
 
-    normalized_names = [
-        ingredient.get('normalized_name', '')
-        for ingredient in ingredients
-        if ingredient.get('normalized_name')
-    ]
+    matched_ingredients = {}
+    normalized_names = []
+    for ingredient in ingredients:
+        normalized_name = ingredient.get('normalized_name', '')
+        if normalized_name:
+            normalized_names.append(normalized_name)
+
+        iherb_ingredient = match_iherb_ingredient(
+            normalized_name,
+            ingredient.get('name_ko'),
+            ingredient.get('name_en'),
+        )
+        if iherb_ingredient:
+            matched_ingredients[id(ingredient)] = iherb_ingredient
+            normalized_names.append(iherb_ingredient.canonical_name)
 
     mappings = IngredientLinkMapping.objects.filter(
-        normalized_name__in=normalized_names,
+        normalized_name__in=set(normalized_names),
     )
 
     mapping_dict = {}
@@ -253,18 +264,42 @@ def inject_iherb_links(ingredients: list) -> None:
 
     for ingredient in ingredients:
         normalized_name = ingredient.get('normalized_name', '')
-        mapping = mapping_dict.get(normalized_name)
+        iherb_ingredient = matched_ingredients.get(id(ingredient))
+        canonical_name = iherb_ingredient.canonical_name if iherb_ingredient else ''
+        mapping = mapping_dict.get(normalized_name) or mapping_dict.get(canonical_name)
         if mapping:
+            ingredient['normalized_name'] = mapping.normalized_name
             ingredient['iherb_url'] = mapping.iherb_url
             ingredient['iherb_category_name'] = mapping.iherb_category_name or None
-        elif normalized_name in blocked_names:
+        elif normalized_name in blocked_names or canonical_name in blocked_names:
             ingredient['iherb_url'] = None
             ingredient['iherb_category_name'] = None
+        elif iherb_ingredient and is_iherb_url_allowed(iherb_ingredient.iherb_url):
+            ingredient['normalized_name'] = iherb_ingredient.canonical_name
+            ingredient['iherb_url'] = iherb_ingredient.iherb_url
+            ingredient['iherb_category_name'] = iherb_ingredient.iherb_category_name or None
         elif is_iherb_url_allowed(ingredient.get('iherb_url')):
             ingredient['iherb_category_name'] = ingredient.get('iherb_category_name') or None
         else:
-            ingredient['iherb_url'] = None
+            search_url = build_iherb_search_url(ingredient)
+            ingredient['iherb_url'] = search_url
             ingredient['iherb_category_name'] = None
+
+
+def build_iherb_search_url(ingredient: dict) -> str | None:
+    keyword = (
+        ingredient.get('name_ko')
+        or ingredient.get('name_en')
+        or ingredient.get('normalized_name')
+    )
+    if not keyword:
+        return None
+
+    keyword = str(keyword).strip()
+    if not keyword:
+        return None
+
+    return f'https://kr.iherb.com/search?kw={quote(keyword)}'
 
 
 def is_iherb_url_allowed(url: str | None) -> bool:

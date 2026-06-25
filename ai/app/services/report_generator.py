@@ -9,8 +9,8 @@ from app.schemas.reports import (
     ReportGenerateResponse,
 )
 from app.services.guardrails import filter_valid_citations
+from app.services.iherb_dictionary import match_iherb_ingredient, should_use_iherb_canonical
 from app.services.llm_generation import generate_report_with_llm
-from app.services.entity_dictionary import iherb_mapping_for
 
 DEFAULT_DISCLAIMER = "질환이 있거나 약을 복용 중인 경우 전문가와 상담하세요."
 SUITABILITY_DISCLAIMER = (
@@ -70,7 +70,6 @@ def generate_report(payload: ReportGenerateRequest) -> ReportGenerateResponse:
 
     fallback_response = build_template_report(payload)
     response = generate_report_with_llm(payload, fallback_response)
-    apply_iherb_mappings(response.recommended_ingredients)
     return response
 
 
@@ -153,7 +152,24 @@ def build_recommended_ingredients(payload: ReportGenerateRequest) -> list[Recomm
     ingredients = []
     for context in sorted_contexts:
         metadata = context.metadata
-        ingredient_name = clean_ingredient_display_name(metadata.get("ingredient_name_ko") or context.title)
+        raw_ingredient_name = metadata.get("ingredient_name_ko") or context.title
+        iherb_ingredient = match_iherb_ingredient(
+            raw_ingredient_name,
+            metadata.get("normalized_name"),
+            metadata.get("ingredient_name_en"),
+            context.title,
+        )
+        ingredient_name = clean_ingredient_display_name(raw_ingredient_name)
+        existing_normalized_name = metadata.get("normalized_name")
+        if iherb_ingredient:
+            use_iherb_canonical = should_use_iherb_canonical(
+                existing_normalized_name,
+                raw_ingredient_name,
+            )
+            if use_iherb_canonical:
+                ingredient_name = iherb_ingredient.ingredient_name_ko
+                existing_normalized_name = iherb_ingredient.canonical_name
+
         precautions = as_list(metadata.get("precautions"), [DEFAULT_DISCLAIMER])
         expected_effects = extract_expected_effects(metadata)
 
@@ -175,7 +191,7 @@ def build_recommended_ingredients(payload: ReportGenerateRequest) -> list[Recomm
             RecommendedIngredient(
                 name_ko=ingredient_name,
                 name_en=metadata.get("ingredient_name_en") or ingredient_name,
-                normalized_name=metadata.get("normalized_name") or context.title.lower().replace(" ", "_"),
+                normalized_name=existing_normalized_name or context.title.lower().replace(" ", "_"),
                 reason=build_recommendation_reason(
                     ingredient_name=ingredient_name,
                     goal_names=[goal.name_ko for goal in payload.normalized_input.health_goals],

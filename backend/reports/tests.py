@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from unittest.mock import patch
 
+from .services import inject_iherb_links
 from .models import HealthGoal, IngredientLinkMapping, MedicationOption, Report, SpecialConditionOption
 
 
@@ -526,6 +527,42 @@ class IherbLinkMappingTests(APITestCase):
         )
         self.assertIsNotNone(magnesium)
         self.assertIsNone(magnesium.get('iherb_url'))
+
+    def test_iherb_url_falls_back_to_dictionary_alias_match(self):
+        IngredientLinkMapping.objects.filter(normalized_name='클로렐라').delete()
+        ingredients = [
+            {
+                'name_ko': '클로렐라 추출물',
+                'name_en': '',
+                'normalized_name': '클로렐라_추출물',
+            }
+        ]
+
+        inject_iherb_links(ingredients)
+
+        self.assertEqual(ingredients[0]['normalized_name'], '클로렐라')
+        self.assertEqual(
+            ingredients[0]['iherb_url'],
+            'https://kr.iherb.com/c/supplements?cids=115',
+        )
+        self.assertEqual(ingredients[0]['iherb_category_name'], '녹색 채소 & 슈퍼 푸드')
+
+    def test_iherb_url_falls_back_to_search_url_when_mapping_is_missing(self):
+        ingredients = [
+            {
+                'name_ko': '키토올리고당',
+                'name_en': '',
+                'normalized_name': 'kito_oligosaccharide',
+            }
+        ]
+
+        inject_iherb_links(ingredients)
+
+        self.assertEqual(
+            ingredients[0]['iherb_url'],
+            'https://kr.iherb.com/search?kw=%ED%82%A4%ED%86%A0%EC%98%AC%EB%A6%AC%EA%B3%A0%EB%8B%B9',
+        )
+        self.assertIsNone(ingredients[0]['iherb_category_name'])
 
     def test_iherb_mapping_rejects_non_allowlist_url_on_validation(self):
         mapping = IngredientLinkMapping(
