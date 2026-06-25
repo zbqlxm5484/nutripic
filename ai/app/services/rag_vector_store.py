@@ -173,6 +173,8 @@ def calculate_metadata_boost(
 
     if document.get("source_type") == "idisk":
         boost += calculate_idisk_query_bundle_boost(metadata, query_bundle or {})
+    if document.get("source_type") == "functional_ingredient":
+        boost += calculate_mfds_query_bundle_boost(metadata, document, query_bundle or {})
 
     return boost
 
@@ -194,6 +196,35 @@ def calculate_idisk_query_bundle_boost(
         boost += 0.05
 
     return boost
+
+
+def calculate_mfds_query_bundle_boost(
+    metadata: dict[str, Any],
+    document: dict[str, Any],
+    query_bundle: dict[str, Any],
+) -> float:
+    mfds_bundle = query_bundle.get("mfds") or {}
+    functional_categories = mfds_bundle.get("functional_categories", [])
+    if not functional_categories:
+        return 0.0
+
+    searchable_metadata = " ".join(
+        [
+            str(metadata.get("section", "")),
+            str(metadata.get("category", "")),
+            str(metadata.get("claim_category", "")),
+            " ".join(as_text_list(metadata.get("functional_claims", []))),
+            str(document.get("content", "")),
+        ]
+    )
+    searchable_tokens = set(tokenize(searchable_metadata))
+
+    for category in functional_categories:
+        category_tokens = set(tokenize(str(category)))
+        if category_tokens and category_tokens.issubset(searchable_tokens):
+            return 0.35
+
+    return 0.0
 
 
 def as_string_set(value: Any) -> set[str]:

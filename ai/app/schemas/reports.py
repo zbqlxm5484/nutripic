@@ -71,6 +71,10 @@ class RecommendedIngredient(BaseModel):
     name_en: str
     normalized_name: str
     reason: str
+    recommendation_score: int = 70
+    score_label: str = "보통"
+    score_reasons: list[str] = Field(default_factory=list)
+    caution_level: str = "low"
     expected_effects: list[str] = Field(default_factory=list)
     recommended_dosage: str
     side_effects: list[str] = Field(default_factory=list)

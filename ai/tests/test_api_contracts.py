@@ -90,11 +90,87 @@ def test_normalize_returns_normalized_input_and_search_queries():
     assert body["normalized_input"]["health_goals"][0]["name_en"] == "fatigue"
     assert body["normalized_input"]["medications"][0]["name_en"] == "anticoagulant"
     assert body["normalized_input"]["special_conditions"][0]["name_en"] == "allergy"
-    assert "fatigue sleep supplements" in body["search_queries"]
+    assert any(
+        query.startswith("fatigue sleep")
+        and "피로개선" in query
+        and "수면질 개선" in query
+        and query.endswith("supplements")
+        for query in body["search_queries"]
+    )
     assert "anticoagulant supplement precautions" in body["search_queries"]
     assert body["rag_query_bundle"]["idisk"]["drug_ids"] == ["D000011"]
-    assert body["rag_query_bundle"]["mfds"]["functional_categories"] == ["피로개선"]
+    assert set(body["rag_query_bundle"]["mfds"]["functional_categories"]) == {"피로개선", "수면질 개선"}
     assert body["rag_query_bundle"]["text_queries"] == body["search_queries"]
+
+
+def test_normalize_trusts_official_health_goal_code():
+    response = client.post(
+        "/internal/ai/v1/normalize/",
+        headers=HEADERS,
+        json={
+            "request_id": "req_test_immunity_code",
+            "age": 30,
+            "gender": "female",
+            "health_goals": [
+                {"code": "immunity", "name": "면역 관리", "priority": 1},
+            ],
+            "medications": [],
+            "special_conditions": [],
+            "additional_notes": "",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["needs_clarification"] is False
+    goal = body["normalized_input"]["health_goals"][0]
+    assert goal["name_en"] == "immune_support"
+    assert goal["normalized_name"] == "immune_support"
+    assert goal["confidence"] >= 0.95
+    assert body["rag_query_bundle"]["mfds"]["functional_categories"] == ["면역 기능 개선"]
+
+
+def test_normalize_trusts_all_official_option_codes():
+    response = client.post(
+        "/internal/ai/v1/normalize/",
+        headers=HEADERS,
+        json={
+            "request_id": "req_test_all_official_codes",
+            "age": 30,
+            "gender": "female",
+            "health_goals": [
+                {"code": "body_fat", "name": "체지방 관리", "priority": 1},
+                {"code": "bone_health", "name": "뼈 건강", "priority": 2},
+                {"code": "blood_sugar", "name": "혈당 관리", "priority": 3},
+            ],
+            "medications": [
+                {"code": "cholesterol", "name": "고지혈증약"},
+                {"code": "stomach", "name": "위장약"},
+            ],
+            "special_conditions": [
+                {"code": "child_teen", "name": "어린이/청소년"},
+                {"code": "smoking", "name": "흡연"},
+            ],
+            "additional_notes": "",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["needs_clarification"] is False
+    assert body["questions"] == []
+    assert {
+        goal["normalized_name"]
+        for goal in body["normalized_input"]["health_goals"]
+    } == {"body_fat", "bone_health", "blood_sugar"}
+    assert {
+        medication["normalized_name"]
+        for medication in body["normalized_input"]["medications"]
+    } == {"statins", "stomach_medication"}
+    assert {
+        condition["normalized_name"]
+        for condition in body["normalized_input"]["special_conditions"]
+    } == {"child_teen", "smoking"}
 
 
 def test_rag_search_returns_results():
@@ -181,7 +257,7 @@ def test_report_generate_returns_completed_report():
     assert body["title"]
     assert body["input_summary"]["health_goals"] == ["피로"]
     assert body["recommended_ingredients"][0]["normalized_name"] == "magnesium"
-    assert body["disclaimer"] == "질환이 있거나 약을 복용 중인 경우 전문가와 상담하세요."
+    assert "질환이 있거나 약을 복용 중인 경우 전문가와 상담하세요." in body["disclaimer"]
     assert body["citations"][0]["document_id"] == "functional_ingredient_magnesium"
     assert body["guardrail_result"]["is_allowed"] is True
 
@@ -510,14 +586,117 @@ def test_report_generate_iherb_fields_are_dictionary_mapped():
     body = response.json()
     assert body["status"] == "completed"
     ingredient = body["recommended_ingredients"][0]
-    assert ingredient.get("iherb_url") == "https://kr.iherb.com/c/supplements?cids=1805"
-    assert ingredient.get("iherb_category_name") == "미네랄"
+    # AI 서버는 iherb_url을 생성하지 않는다
+    assert ingredient.get("iherb_url") is None
+    assert ingredient.get("iherb_category_name") is None
+    assert 0 <= ingredient["recommendation_score"] <= 100
+    assert ingredient["score_label"] in {"높음", "보통", "주의 필요", "낮음"}
+    assert isinstance(ingredient["score_reasons"], list)
+    assert ingredient["caution_level"] in {"low", "medium", "high"}
+    assert "추천 적합도는" in body["disclaimer"]
+
+
+def test_report_generate_uses_functional_claims_reason_and_goal_tips():
+    response = client.post(
+        "/internal/ai/v1/reports/generate/",
+        headers=HEADERS,
+        json={
+            "request_id": "req_test_personalized_fallback",
+            "user_id": 1,
+            "normalized_input": {
+                "age": 30,
+                "gender": "female",
+                "health_goals": [
+                    {"code": "blood_sugar", "name_ko": "혈당 관리", "name_en": "blood_sugar", "priority": 1, "confidence": 0.98}
+                ],
+                "medications": [],
+                "special_conditions": [],
+                "additional_notes": "",
+                "additional_terms": [],
+            },
+            "rag_contexts": [
+                {
+                    "document_id": "functional_ingredient_banana_leaf",
+                    "source_type": "functional_ingredient",
+                    "source_name": "건강기능식품 기능성원료 인정현황",
+                    "title": "바나바주정 추출물 (고시된 원료로 전환 : 바나바잎 추출물)",
+                    "content": "기능성 요약",
+                    "metadata": {
+                        "ingredient_name_ko": "바나바주정 추출물 (고시된 원료로 전환 : 바나바잎 추출물)",
+                        "ingredient_name_en": "Banaba leaf extract",
+                        "normalized_name": "banaba_leaf_extract",
+                        "daily_dosage": "기능성원료 인정현황의 일일섭취량 범위를 따르세요.",
+                        "functional_claims": ["식후 혈당 상승 억제에 도움을 줄 수 있음"],
+                        "side_effects": [],
+                        "precautions": [],
+                    },
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    ingredient = body["recommended_ingredients"][0]
+    assert ingredient["name_ko"] == "바나바잎 추출물"
+    assert ingredient["expected_effects"] == ["식후 혈당 상승 억제에 도움을 줄 수 있음"]
+    assert "바나바잎 추출물" in ingredient["reason"]
+    assert "고시된 원료로 전환" not in ingredient["reason"]
+    assert "혈당 관리" in ingredient["reason"]
+    assert "식후 혈당 상승 억제에 도움을 줄 수 있음" in ingredient["reason"]
+    assert any("식후" in tip or "혈당" in tip for tip in body["lifestyle_tips"])
+
+
+def test_report_generate_removes_converted_ingredient_note_without_target():
+    response = client.post(
+        "/internal/ai/v1/reports/generate/",
+        headers=HEADERS,
+        json={
+            "request_id": "req_test_converted_name_without_target",
+            "user_id": 1,
+            "normalized_input": {
+                "age": 30,
+                "gender": "female",
+                "health_goals": [
+                    {"code": "bone_health", "name_ko": "뼈 건강", "name_en": "bone_health", "priority": 1, "confidence": 0.98}
+                ],
+                "medications": [],
+                "special_conditions": [],
+                "additional_notes": "",
+                "additional_terms": [],
+            },
+            "rag_contexts": [
+                {
+                    "document_id": "functional_ingredient_glucosamine",
+                    "source_type": "functional_ingredient",
+                    "source_name": "건강기능식품 기능성원료 인정현황",
+                    "title": "글루코사민 (고시된 원료로 전환)",
+                    "content": "기능성 요약",
+                    "metadata": {
+                        "ingredient_name_ko": "글루코사민 (고시된 원료로 전환)",
+                        "ingredient_name_en": "Glucosamine",
+                        "normalized_name": "glucosamine",
+                        "daily_dosage": "기능성원료 인정현황의 일일섭취량 범위를 따르세요.",
+                        "functional_claims": ["관절 및 연골 건강에 도움을 줄 수 있음"],
+                        "side_effects": [],
+                        "precautions": [],
+                    },
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    ingredient = body["recommended_ingredients"][0]
+    assert ingredient["name_ko"] == "글루코사민"
+    assert "고시된 원료로 전환" not in ingredient["reason"]
 
 
 # ── citation 검증 테스트 ────────────────────────────────────────
 
 def test_report_generate_citations_only_include_valid_document_ids():
-    """리포트 생성 시 citation document_id는 RAG context에 있는 것만 포함된다."""
+    """리포트 생성 시 citation은 source_name 기준으로 두 출처만 중복 없이 포함된다."""
     response = client.post(
         "/internal/ai/v1/reports/generate/",
         headers=HEADERS,
@@ -537,11 +716,35 @@ def test_report_generate_citations_only_include_valid_document_ids():
             },
             "rag_contexts": [
                 {
+                    "document_id": "idisk_zinc_precaution",
+                    "source_type": "idisk",
+                    "source_name": "iDISK",
+                    "title": "아연 주의사항",
+                    "content": "주의사항 요약",
+                    "metadata": {},
+                },
+                {
                     "document_id": "functional_ingredient_zinc",
                     "source_type": "functional_ingredient",
                     "source_name": "건강기능식품 기능성원료 인정현황",
                     "title": "아연",
                     "content": "기능성 요약",
+                    "metadata": {
+                        "ingredient_name_ko": "아연",
+                        "ingredient_name_en": "Zinc",
+                        "normalized_name": "zinc",
+                        "daily_dosage": "기준 범위 내 섭취",
+                        "expected_effects": ["면역 기능"],
+                        "side_effects": [],
+                        "precautions": [],
+                    },
+                },
+                {
+                    "document_id": "functional_ingredient_zinc_duplicate",
+                    "source_type": "functional_ingredient",
+                    "source_name": "건강기능식품 기능성원료 인정현황",
+                    "title": "아연",
+                    "content": "기능성 요약 중복",
                     "metadata": {
                         "ingredient_name_ko": "아연",
                         "ingredient_name_en": "Zinc",
@@ -558,9 +761,8 @@ def test_report_generate_citations_only_include_valid_document_ids():
 
     assert response.status_code == 200
     body = response.json()
-    citation_ids = {c["document_id"] for c in body["citations"]}
-    # RAG context에 없는 document_id는 포함되지 않는다
-    assert citation_ids.issubset({"functional_ingredient_zinc"})
+    source_names = [c["source_name"] for c in body["citations"]]
+    assert source_names == ["iDISK", "건강기능식품 기능성원료 인정현황"]
 
 
 # ── 위험 신호 반영 테스트 ─────────────────────────────────────────

@@ -27,6 +27,18 @@ def standard_exception_handler(exc, context):
     if isinstance(original_data, dict):
         if 'detail' in original_data:
             message = str(original_data['detail'])
+            details = {
+                key: value
+                for key, value in original_data.items()
+                if key != 'detail'
+            }
+        elif 'message' in original_data:
+            message = str(original_data['message'])
+            details = {
+                key: value
+                for key, value in original_data.items()
+                if key != 'message'
+            }
         else:
             details = original_data
     else:

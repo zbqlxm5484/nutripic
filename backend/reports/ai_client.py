@@ -7,9 +7,10 @@ from django.conf import settings
 
 
 class AIClientError(Exception):
-    def __init__(self, status_code, payload=None):
+    def __init__(self, status_code, payload=None, path=None):
         self.status_code = status_code
         self.payload = payload or {}
+        self.path = path
         super().__init__(self.payload.get('message', 'AI server request failed.'))
 
 
@@ -59,11 +60,21 @@ class AIClient:
 
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                return json.loads(response.read().decode('utf-8'))
+                try:
+                    return json.loads(response.read().decode('utf-8'))
+                except (json.JSONDecodeError, UnicodeDecodeError) as error:
+                    raise AIClientError(
+                        status_code=502,
+                        payload={
+                            'message': 'AI server returned an invalid JSON response.',
+                        },
+                        path=path,
+                    ) from error
         except urllib.error.HTTPError as error:
             raise AIClientError(
                 status_code=error.code,
                 payload=self._read_error_payload(error),
+                path=path,
             ) from error
         except urllib.error.URLError as error:
             raise AIServiceUnavailableError(str(error)) from error

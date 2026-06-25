@@ -4,7 +4,7 @@ from openai import OpenAI
 
 from app.core.config import settings
 from app.schemas.chat import ChatRespondRequest, ChatRespondResponse
-from app.schemas.common import GuardrailResult
+from app.schemas.common import Citation, GuardrailResult
 from app.schemas.guardrails import OutputGuardrailRequest, OutputGuardrailResponse
 from app.schemas.reports import ReportGenerateRequest, ReportGenerateResponse
 from app.services.guardrails import DEFAULT_SAFE_MESSAGE, check_output_guardrail, filter_valid_citations
@@ -251,8 +251,9 @@ def filter_report_citations(
     response: ReportGenerateResponse,
     payload: ReportGenerateRequest,
 ):
-    allowed_ids = {context.document_id for context in payload.rag_contexts}
-    return filter_valid_citations(response.citations, allowed_ids)
+    context_by_id = {context.document_id: context for context in payload.rag_contexts}
+    allowed = filter_valid_citations(response.citations, set(context_by_id))
+    return dedupe_report_citation_sources(allowed, context_by_id)
 
 
 def filter_chat_citations(
@@ -270,6 +271,41 @@ def filter_chat_citations(
         if ingredient.normalized_name
     })
     return filter_valid_citations(response.citations, allowed_ids)
+
+
+def dedupe_report_citation_sources(
+    citations: list[Citation],
+    context_by_id: dict,
+) -> list[Citation]:
+    deduped = []
+    seen_sources = set()
+    for citation in citations:
+        context = context_by_id.get(citation.document_id)
+        source_name = report_source_name(
+            context.source_type if context else citation.source_type,
+            context.source_name if context else citation.source_name,
+        )
+        if not source_name or source_name in seen_sources:
+            continue
+        seen_sources.add(source_name)
+        deduped.append(
+            Citation(
+                source_type=context.source_type if context else citation.source_type,
+                source_name=source_name,
+                document_id=citation.document_id,
+            )
+        )
+    return deduped
+
+
+def report_source_name(source_type: str, source_name: str | None) -> str | None:
+    if source_type == "idisk":
+        return "iDISK"
+    if source_type == "functional_ingredient":
+        return "건강기능식품 기능성원료 인정현황"
+    if source_name in {"iDISK", "건강기능식품 기능성원료 인정현황"}:
+        return source_name
+    return None
 
 
 def serialize_report_content(response: ReportGenerateResponse) -> str:
@@ -441,6 +477,10 @@ def build_report_output_schema() -> dict:
                 "name_en": "string",
                 "normalized_name": "string",
                 "reason": "string",
+                "recommendation_score": "integer from 0 to 100; suitability score, not efficacy probability",
+                "score_label": "높음, 보통, 주의 필요, or 낮음",
+                "score_reasons": ["string"],
+                "caution_level": "low, medium, or high",
                 "expected_effects": ["string"],
                 "recommended_dosage": "string",
                 "side_effects": ["string"],

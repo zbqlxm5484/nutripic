@@ -196,11 +196,12 @@ def build_rag_query_bundle(
     conditions = [*goals, *special_conditions]
     safety_terms = [*medications, *special_conditions, *additional_terms]
     ingredient_terms = [term for term in [*goals, *additional_terms] if term.get("term_type") == "ingredient"]
+    mfds_functional_categories = source_ids_for(conditions, "mfds")
 
     text_queries = []
     goal_names = [english_name(term, term["normalized_name"]) for term in goals]
     if goal_names:
-        text_queries.append(" ".join([*goal_names, "supplements"]))
+        text_queries.append(" ".join([*goal_names, *mfds_functional_categories, "supplements"]))
 
     for term in safety_terms:
         text_queries.append(f"{english_name(term, term['normalized_name'])} supplement precautions")
@@ -218,7 +219,7 @@ def build_rag_query_bundle(
         },
         "mfds": {
             "ingredient_names": source_ids_for(ingredient_terms, "mfds"),
-            "functional_categories": source_ids_for(conditions, "mfds"),
+            "functional_categories": mfds_functional_categories,
         },
         "iherb": {
             "ingredient_ids": source_ids_for(ingredient_terms, "iherb"),
