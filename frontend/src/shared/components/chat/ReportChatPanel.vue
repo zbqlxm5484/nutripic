@@ -1,7 +1,10 @@
 <template>
-  <ContentSection :title="title" :title-id="titleId" :description="description" class="report-chat-panel">
-    <p v-if="isLoading" class="report-chat-panel__status">채팅 내역을 불러오는 중입니다.</p>
-    <p v-else-if="messages.length === 0" class="report-chat-panel__status">아직 질문 내역이 없습니다.</p>
+  <div class="chat-panel">
+    <header class="chat-panel__header">
+      <div class="chat-panel__title">{{ title }}</div>
+      <p class="chat-panel__desc">{{ description }}</p>
+      <p v-if="limitNotice" class="chat-panel__limit">{{ limitNotice }}</p>
+    </header>
 
     <div v-else class="report-chat-panel__messages">
       <div
@@ -22,13 +25,13 @@
       </div>
     </div>
 
-    <form class="report-chat-panel__form" @submit.prevent="handleSubmit">
-      <textarea
-        class="form-control"
-        rows="4"
-        :placeholder="placeholder"
+    <div class="chat-panel__input-row" @click.capture="handleDisabledSubmitAttempt">
+      <input
+        class="chat-panel__input"
+        type="text"
         :value="modelValue"
-        :disabled="isSubmitting"
+        :placeholder="placeholder"
+        :disabled="isSubmitting || submitDisabled"
         @input="$emit('update:modelValue', $event.target.value)"
       />
       <p v-if="errorMessage" class="report-chat-panel__error" role="alert">{{ errorMessage }}</p>
@@ -43,8 +46,8 @@
         :key="question"
         class="report-chat-panel__suggestion"
         type="button"
-        :disabled="isSubmitting"
-        @click="submitSuggestedQuestion(question)"
+        :disabled="isSubmitButtonDisabled"
+        @click="handleSubmit"
       >
         {{ question }}
       </button>
@@ -53,9 +56,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import BaseButton from '../base/BaseButton.vue'
-import ContentSection from '../layout/ContentSection.vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 const props = defineProps({
   title: {
@@ -106,9 +107,19 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  limitNotice: {
+    type: String,
+    default: '',
+  },
+  submitDisabled: {
+    type: Boolean,
+    default: false,
+  },
 })
 
-const emit = defineEmits(['update:modelValue', 'submit'])
+const emit = defineEmits(['update:modelValue', 'submit', 'disabled-submit'])
+const messagesEl = ref(null)
+const isSubmitButtonDisabled = computed(() => props.isSubmitting || props.submitDisabled || !props.modelValue.trim())
 
 const suggestedQuestions = computed(() =>
   props.suggestedQuestions
@@ -119,21 +130,19 @@ const suggestedQuestions = computed(() =>
 
 function handleSubmit() {
   const content = props.modelValue.trim()
+  if (props.submitDisabled) {
+    emit('disabled-submit')
+    return
+  }
   if (!content || props.isSubmitting) return
 
   emit('submit', content)
 }
 
-function submitSuggestedQuestion(question) {
-  if (!question || props.isSubmitting) return
-
-  emit('update:modelValue', question)
-  emit('submit', question)
-}
-
-function formatGuardrail(result) {
-  if (result.is_allowed === false) return '차단됨'
-  return result.risk_level ? `허용됨 (${result.risk_level})` : '허용됨'
+function handleDisabledSubmitAttempt() {
+  if (props.submitDisabled) {
+    emit('disabled-submit')
+  }
 }
 </script>
 
@@ -150,7 +159,39 @@ function formatGuardrail(result) {
   color: var(--color-text-soft);
 }
 
-.report-chat-panel__message p {
+.chat-panel__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a221e;
+  line-height: 1.3;
+}
+
+.chat-panel__desc {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #8b938c;
+}
+
+.chat-panel__limit {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #6b736d;
+}
+
+.chat-panel__messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #fafbf9;
+  scrollbar-width: thin;
+}
+
+.chat-panel__status {
   margin: 0;
   line-height: 1.6;
 }

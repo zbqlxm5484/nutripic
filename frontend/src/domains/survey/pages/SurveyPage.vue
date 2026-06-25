@@ -78,7 +78,11 @@
             title="선택지가 없습니다"
             description="현재 단계에서 표시할 선택지가 없습니다."
           />
-          <div v-else class="chip-grid">
+          <div
+            v-else
+            class="chip-grid"
+            :class="{ 'chip-grid--health-goals': currentStep.id === 'health_goals' }"
+          >
             <label
               v-for="option in currentOptions"
               :key="option.code"
@@ -149,10 +153,12 @@
 
       <SafetyNotice />
 
-      <div class="action-bar" aria-label="설문 이동">
-        <BaseButton :disabled="isFirstStep || isSubmitting" @click="previous">이전</BaseButton>
-        <BaseButton v-if="!isLastStep" variant="primary" :disabled="isSubmitting" @click="next">다음</BaseButton>
-        <BaseButton v-else variant="primary" :disabled="isSubmitting" @click="handleCreateReportRequest">
+      <p class="limit-notice">{{ reportLimitMessages.reportCreate }}</p>
+
+      <div class="action-bar" aria-label="설문 이동" @click="handleCreateReportDisabledAttempt">
+        <button v-if="!isFirstStep" class="action-bar__prev" :disabled="isSubmitting" @click="previous">이전</button>
+        <button v-if="!isLastStep" class="action-bar__next" :disabled="isSubmitting" @click="next">다음</button>
+        <button v-else class="action-bar__next" :disabled="isSubmitting || isReportCreateLimited" @click="handleCreateReportRequest">
           {{ isSubmitting ? '리포트 생성 중' : '리포트 생성 요청' }}
         </BaseButton>
       </div>
@@ -178,8 +184,13 @@ import { surveySteps } from '../config/surveyDefinition'
 import { useSurveyFunnel } from '../composables/surveyFlow'
 import { useSurveyOptions } from '../composables/useSurveyOptions'
 import { buildReportPayload } from '../mappers/surveyReportPayload'
+import { reportLimitMessages } from '../../../shared/constants/reportLimits'
+import { useRateLimitStatus } from '../../../shared/composables/useRateLimitStatus'
+import { useToast } from '../../../shared/composables/useToast'
 
 const router = useRouter()
+const { showToast } = useToast()
+const { isReportCreateLimited, reportCreateLimitedMessage } = useRateLimitStatus()
 const {
   state,
   currentStepId,
@@ -206,6 +217,7 @@ const isSubmitting = ref(false)
 const submitError = ref('')
 const clarificationQuestions = ref([])
 const profileDefaultsApplied = ref(false)
+const PROFILE_DEFAULT_STEP_ADVANCE_ENABLED = false
 
 const currentOptions = computed(() => {
   return currentStep.value.options ?? optionGroups[currentStep.value.optionGroup] ?? []
@@ -217,6 +229,11 @@ onMounted(() => {
 })
 
 async function handleCreateReportRequest() {
+  if (isReportCreateLimited.value) {
+    showToast(reportCreateLimitedMessage.value || reportLimitMessages.reportCreate, { type: 'error' })
+    return
+  }
+
   if (!surveyValidation.value.isValid) {
     showValidationFor(surveyValidation.value.stepId)
     return
@@ -236,6 +253,12 @@ async function handleCreateReportRequest() {
     if (router.currentRoute.value.path !== '/reports/generating') {
       isSubmitting.value = false
     }
+  }
+}
+
+function handleCreateReportDisabledAttempt() {
+  if (isLastStep.value && isReportCreateLimited.value) {
+    showToast(reportCreateLimitedMessage.value || reportLimitMessages.reportCreate, { type: 'error' })
   }
 }
 
@@ -264,7 +287,11 @@ function applyProfileDefaults(user) {
   if (!state.age) state.age = profileDefaults.age
   if (!state.gender) state.gender = profileDefaults.gender
 
-  if (!profileDefaultsApplied.value && ['age', 'gender'].includes(currentStepId.value)) {
+  if (
+    PROFILE_DEFAULT_STEP_ADVANCE_ENABLED &&
+    !profileDefaultsApplied.value &&
+    ['age', 'gender'].includes(currentStepId.value)
+  ) {
     currentStepId.value = 'health_goals'
     profileDefaultsApplied.value = true
   }
@@ -350,6 +377,10 @@ function getValidProfileDefaults(user) {
   gap: var(--space-2);
 }
 
+.chip-grid--health-goals {
+  gap: var(--space-3);
+}
+
 .chip-grid label {
   display: inline-flex;
   align-items: center;
@@ -416,6 +447,14 @@ textarea.form-control {
   box-sizing: border-box;
 }
 
+.limit-notice {
+  margin: -4px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #7b837d;
+}
+
+/* ---- Action bar ---- */
 .action-bar {
   display: flex;
   flex-wrap: wrap;
@@ -423,10 +462,51 @@ textarea.form-control {
   justify-content: flex-end;
 }
 
-@media (min-width: 720px) {
-  .progress-panel,
-  .action-bar {
-    padding: var(--space-6);
-  }
+.action-bar__prev {
+  flex: none;
+  width: 80px;
+  height: 50px;
+  border: 1.5px solid #d4dad4;
+  border-radius: 11px;
+  background: #fff;
+  color: #5a625b;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 150ms;
+}
+
+.action-bar__prev:hover:not(:disabled) {
+  border-color: var(--color-brand);
+}
+
+.action-bar__prev:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-bar__next {
+  flex: 1;
+  height: 50px;
+  border: none;
+  border-radius: 11px;
+  background: var(--color-brand);
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 150ms;
+}
+
+.action-bar__next:hover:not(:disabled) {
+  background: var(--color-brand-strong);
+}
+
+.action-bar__next:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 </style>
