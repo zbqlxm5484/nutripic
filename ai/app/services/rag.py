@@ -9,6 +9,8 @@ from app.services.rag_vector_store import (
     search_vector_index,
 )
 
+RAG_MIN_SCORE = 0.5  # 이 값 미만의 최고점수이면 needs_clarification 반환
+
 
 def search_rag(payload: RagSearchRequest) -> RagSearchResponse:
     try:
@@ -26,7 +28,28 @@ def search_rag(payload: RagSearchRequest) -> RagSearchResponse:
             request_id=payload.request_id,
         )
 
-    return RagSearchResponse(results=results)
+    rag_response = RagSearchResponse(results=results)
+    _annotate_rag_quality(rag_response)
+    return rag_response
+
+
+def _annotate_rag_quality(response: RagSearchResponse) -> None:
+    """
+    검색 결과 품질을 평가해 needs_clarification 여부를 표시한다.
+    결과가 없거나 최고 score가 RAG_MIN_SCORE 미만이면 True를 설정한다.
+    """
+    if not response.results:
+        response.needs_clarification = True
+        response.low_rag_score = True
+        return
+
+    max_score = max(r.score for r in response.results)
+    if max_score < RAG_MIN_SCORE:
+        response.needs_clarification = True
+        response.low_rag_score = True
+    else:
+        response.needs_clarification = False
+        response.low_rag_score = False
 
 
 def search_selected_backend(

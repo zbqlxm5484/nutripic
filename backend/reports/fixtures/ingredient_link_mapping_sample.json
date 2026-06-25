@@ -1,0 +1,57 @@
+﻿[
+  {
+    "model": "reports.ingredientlinkmapping",
+    "pk": 1,
+    "fields": {
+      "normalized_name": "magnesium",
+      "ingredient_name_ko": "\ub9c8\uadf8\ub124\uc288",
+      "iherb_url": "https://kr.iherb.com/c/minerals",
+      "iherb_category_name": "Minerals",
+      "is_active": true
+    }
+  },
+  {
+    "model": "reports.ingredientlinkmapping",
+    "pk": 2,
+    "fields": {
+      "normalized_name": "vitamin_c",
+      "ingredient_name_ko": "\ube44\ud0c0\ubbfc C",
+      "iherb_url": "https://kr.iherb.com/c/vitamin-c",
+      "iherb_category_name": "Vitamin C",
+      "is_active": true
+    }
+  },
+  {
+    "model": "reports.ingredientlinkmapping",
+    "pk": 3,
+    "fields": {
+      "normalized_name": "zinc",
+      "ingredient_name_ko": "\uc544\uc5f0",
+      "iherb_url": "https://kr.iherb.com/c/zinc",
+      "iherb_category_name": "Zinc",
+      "is_active": true
+    }
+  },
+  {
+    "model": "reports.ingredientlinkmapping",
+    "pk": 4,
+    "fields": {
+      "normalized_name": "vitamin_d",
+      "ingredient_name_ko": "\ube44\ud0c0\ubbfc D",
+      "iherb_url": "https://kr.iherb.com/c/vitamin-d",
+      "iherb_category_name": "Vitamin D",
+      "is_active": true
+    }
+  },
+  {
+    "model": "reports.ingredientlinkmapping",
+    "pk": 5,
+    "fields": {
+      "normalized_name": "omega3",
+      "ingredient_name_ko": "\uc624\uba54\uac003",
+      "iherb_url": "https://kr.iherb.com/c/fish-oil-omega-3",
+      "iherb_category_name": "Fish Oil & Omega-3",
+      "is_active": true
+    }
+  }
+]

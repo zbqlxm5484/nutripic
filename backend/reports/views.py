@@ -1,7 +1,11 @@
+from datetime import datetime, timedelta
+
+from django.conf import settings
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
 
 from .models import HealthGoal, MedicationOption, Report, ReportMessage, SpecialConditionOption
 from .services import generate_report, generate_report_chat_response
@@ -16,6 +20,29 @@ from .serializers import (
     ReportMessageSerializer,
     ReportMessageCreateSerializer,
 )
+
+
+def _today_bounds():
+    today = timezone.localdate()
+    start = timezone.make_aware(
+        datetime.combine(today, datetime.min.time())
+    )
+    end = start + timedelta(days=1)
+    return start, end
+
+
+def _rate_limit_response(resource, limit):
+    return Response(
+        {
+            'error_code': 'rate_limit_exceeded',
+            'message': f'Daily {resource} limit exceeded.',
+            'details': {
+                'resource': resource,
+                'limit': limit,
+            },
+        },
+        status=status.HTTP_429_TOO_MANY_REQUESTS,
+    )
 
 
 class HealthGoalListView(generics.ListAPIView):
@@ -56,6 +83,16 @@ class ReportListCreateView(generics.ListCreateAPIView):
         return ReportCreateSerializer
 
     def create(self, request, *args, **kwargs):
+        daily_limit = settings.REPORT_DAILY_CREATE_LIMIT
+        day_start, day_end = _today_bounds()
+        report_count = Report.objects.filter(
+            user=request.user,
+            created_at__gte=day_start,
+            created_at__lt=day_end,
+        ).count()
+        if report_count >= daily_limit:
+            return _rate_limit_response('report', daily_limit)
+
         serializer = ReportCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -115,6 +152,16 @@ class ReportMessageListCreateView(generics.ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         report = self.get_report()
+        daily_limit = settings.REPORT_CHAT_DAILY_CREATE_LIMIT
+        day_start, day_end = _today_bounds()
+        message_count = ReportMessage.objects.filter(
+            report__user=request.user,
+            role=ReportMessage.ROLE_USER,
+            created_at__gte=day_start,
+            created_at__lt=day_end,
+        ).count()
+        if message_count >= daily_limit:
+            return _rate_limit_response('report_chat', daily_limit)
 
         serializer = ReportMessageCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

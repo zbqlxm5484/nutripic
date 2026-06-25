@@ -1,5 +1,6 @@
 from app.schemas.normalize import (
     AdditionalTerm,
+    ClarificationQuestion,
     NormalizeRequest,
     NormalizeResponse,
     NormalizedGoal,
@@ -15,6 +16,8 @@ TERM_MAP = {
     "알레르기": "allergy",
     "심장 두근거림": "palpitations",
 }
+
+CONFIDENCE_THRESHOLD = 0.7  # 이 값 미만이면 needs_clarification 반환
 
 
 def normalize_text(name: str, expected_types: set[str] | None = None) -> tuple[str, float, dict | None]:
@@ -97,6 +100,23 @@ def normalize(payload: NormalizeRequest) -> NormalizeResponse:
     )
     search_queries = rag_query_bundle["text_queries"]
 
+    clarification_questions = _build_confidence_clarification_questions(
+        goals, medications, special_conditions
+    )
+    if clarification_questions:
+        return NormalizeResponse(
+            normalized_input=NormalizedInput(
+                health_goals=goals,
+                medications=medications,
+                special_conditions=special_conditions,
+                additional_terms=additional_terms,
+            ),
+            search_queries=search_queries,
+            rag_query_bundle=rag_query_bundle,
+            needs_clarification=True,
+            questions=clarification_questions,
+        )
+
     return NormalizeResponse(
         normalized_input=NormalizedInput(
             health_goals=goals,
@@ -106,6 +126,8 @@ def normalize(payload: NormalizeRequest) -> NormalizeResponse:
         ),
         search_queries=search_queries,
         rag_query_bundle=rag_query_bundle,
+        needs_clarification=False,
+        questions=[],
     )
 
 
@@ -126,3 +148,43 @@ def dump_model(model) -> dict:
     if hasattr(model, "model_dump"):
         return model.model_dump()
     return model.dict()
+
+
+def _build_confidence_clarification_questions(
+    goals: list,
+    medications: list,
+    special_conditions: list,
+) -> list[ClarificationQuestion]:
+    """
+    confidence 임계값 미만인 항목이 있으면 사용자에게 확인 질문을 생성한다.
+    """
+    questions = []
+
+    for goal in goals:
+        if goal.confidence < CONFIDENCE_THRESHOLD:
+            questions.append(
+                ClarificationQuestion(
+                    code="low_confidence_health_goal",
+                    message=f"'{goal.name_ko}' 건강 목표를 정확히 이해하지 못했습니다. 조금 더 구체적으로 설명해 주시겠어요?",
+                )
+            )
+
+    for med in medications:
+        if med.confidence < CONFIDENCE_THRESHOLD:
+            questions.append(
+                ClarificationQuestion(
+                    code="low_confidence_medication",
+                    message=f"'{med.name_ko}' 복용 약물을 정확히 파악하지 못했습니다. 약물 이름을 다시 한번 확인해 주시겠어요?",
+                )
+            )
+
+    for cond in special_conditions:
+        if cond.confidence < CONFIDENCE_THRESHOLD:
+            questions.append(
+                ClarificationQuestion(
+                    code="low_confidence_special_condition",
+                    message=f"'{cond.name_ko}' 특이사항을 정확히 이해하지 못했습니다. 조금 더 자세히 설명해 주시겠어요?",
+                )
+            )
+
+    return questions

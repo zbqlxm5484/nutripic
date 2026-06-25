@@ -1,5 +1,11 @@
+from urllib.parse import urlparse
+
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
+
+
+IHERB_ALLOWED_DOMAINS = {'kr.iherb.com', 'iherb.com'}
 
 
 class HealthGoal(models.Model):
@@ -97,3 +103,39 @@ class ReportMessage(models.Model):
 
     def __str__(self):
         return f'{self.report_id} - {self.role}'
+
+
+class IngredientLinkMapping(models.Model):
+    """
+    성분별 iHerb 링크 매핑 테이블.
+    normalized_name 기준으로 조회하며, allowlist 도메인만 저장/노출한다.
+    """
+
+    normalized_name = models.CharField(max_length=100, unique=True)
+    ingredient_name_ko = models.CharField(max_length=100)
+    ingredient_name_en = models.CharField(max_length=100, blank=True, default='')
+    iherb_url = models.URLField(max_length=500)
+    iherb_category_name = models.CharField(max_length=200, blank=True, default='')
+    is_active = models.BooleanField(default=True)
+    last_verified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['normalized_name']
+
+    def __str__(self):
+        return self.normalized_name
+
+    def is_url_allowed(self) -> bool:
+        """저장된 iherb_url이 허용된 도메인인지 검증한다."""
+        try:
+            parsed = urlparse(self.iherb_url)
+            return parsed.scheme == 'https' and parsed.netloc in IHERB_ALLOWED_DOMAINS
+        except Exception:
+            return False
+
+    def clean(self):
+        super().clean()
+        if not self.is_url_allowed():
+            raise ValidationError({
+                'iherb_url': '허용된 iHerb HTTPS 도메인 URL만 저장할 수 있습니다.'
+            })

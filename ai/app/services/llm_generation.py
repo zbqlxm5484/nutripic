@@ -7,7 +7,7 @@ from app.schemas.chat import ChatRespondRequest, ChatRespondResponse
 from app.schemas.common import GuardrailResult
 from app.schemas.guardrails import OutputGuardrailRequest, OutputGuardrailResponse
 from app.schemas.reports import ReportGenerateRequest, ReportGenerateResponse
-from app.services.guardrails import DEFAULT_SAFE_MESSAGE, check_output_guardrail
+from app.services.guardrails import DEFAULT_SAFE_MESSAGE, check_output_guardrail, filter_valid_citations
 
 SYSTEM_PROMPT = (
     "You are the internal AI generation layer for Neutripic. "
@@ -56,6 +56,7 @@ def apply_report_output_guardrail(
     candidate: ReportGenerateResponse,
     fallback_response: ReportGenerateResponse,
 ) -> ReportGenerateResponse:
+    candidate.citations = filter_report_citations(candidate, payload)
     guardrail = check_output_guardrail(
         OutputGuardrailRequest(
             request_id=payload.request_id,
@@ -72,6 +73,7 @@ def apply_report_output_guardrail(
             payload, candidate, fallback_response, guardrail
         )
         if rewrite:
+            rewrite.citations = filter_report_citations(rewrite, payload)
             rewrite_guardrail = check_output_guardrail(
                 OutputGuardrailRequest(
                     request_id=payload.request_id,
@@ -90,6 +92,7 @@ def apply_chat_output_guardrail(
     payload: ChatRespondRequest,
     candidate: ChatRespondResponse,
 ) -> ChatRespondResponse:
+    candidate.citations = filter_chat_citations(candidate, payload)
     guardrail = check_output_guardrail(
         OutputGuardrailRequest(
             request_id=payload.request_id,
@@ -104,6 +107,7 @@ def apply_chat_output_guardrail(
     if is_llm_enabled():
         rewrite = rewrite_chat_response(payload, candidate, guardrail)
         if rewrite:
+            rewrite.citations = filter_chat_citations(rewrite, payload)
             rewrite_guardrail = check_output_guardrail(
                 OutputGuardrailRequest(
                     request_id=payload.request_id,
@@ -241,6 +245,31 @@ def build_blocked_chat_response(
             is_allowed=False, risk_level=guardrail.risk_level
         ),
     )
+
+
+def filter_report_citations(
+    response: ReportGenerateResponse,
+    payload: ReportGenerateRequest,
+):
+    allowed_ids = {context.document_id for context in payload.rag_contexts}
+    return filter_valid_citations(response.citations, allowed_ids)
+
+
+def filter_chat_citations(
+    response: ChatRespondResponse,
+    payload: ChatRespondRequest,
+):
+    allowed_ids = {
+        citation.document_id
+        for citation in payload.report_context.citations
+        if citation.document_id
+    }
+    allowed_ids.update({
+        f"functional_ingredient_{ingredient.normalized_name}"
+        for ingredient in payload.report_context.recommended_ingredients
+        if ingredient.normalized_name
+    })
+    return filter_valid_citations(response.citations, allowed_ids)
 
 
 def serialize_report_content(response: ReportGenerateResponse) -> str:
@@ -415,6 +444,8 @@ def build_report_output_schema() -> dict:
                 "recommended_dosage": "string",
                 "side_effects": ["string"],
                 "precautions": ["string"],
+                "iherb_url": None,
+                "iherb_category_name": None,
             }
         ],
         "lifestyle_tips": ["string"],

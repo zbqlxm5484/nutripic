@@ -176,3 +176,8 @@ AI_INTERNAL_API_KEY = os.environ.get(
     'neutripic_local_ai_internal_key',
 )
 AI_REQUEST_TIMEOUT_SECONDS = float(os.environ.get('AI_REQUEST_TIMEOUT_SECONDS', '30'))
+
+REPORT_DAILY_CREATE_LIMIT = int(os.environ.get('REPORT_DAILY_CREATE_LIMIT', '3'))
+REPORT_CHAT_DAILY_CREATE_LIMIT = int(
+    os.environ.get('REPORT_CHAT_DAILY_CREATE_LIMIT', '30')
+)

@@ -14,6 +14,7 @@ class ReportContext(BaseModel):
     title: str
     recommended_ingredients: list[ReportIngredientContext] = Field(default_factory=list)
     disclaimer: str
+    citations: list[Citation] = Field(default_factory=list)
 
 
 class ChatMessage(BaseModel):

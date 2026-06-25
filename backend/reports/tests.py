@@ -1,9 +1,11 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
 from unittest.mock import patch
 
-from .models import HealthGoal, MedicationOption, Report, SpecialConditionOption
+from .models import HealthGoal, IngredientLinkMapping, MedicationOption, Report, SpecialConditionOption
 
 
 User = get_user_model()
@@ -162,14 +164,17 @@ class FakeAIClient:
         }
 
 
-class FakeBlockingChatInputAIClient(FakeAIClient):
+class ChatInputBlockedAIClient(FakeAIClient):
+    def __init__(self):
+        self.chat_respond_called = False
+
     def input_guardrail(self, payload):
-        if payload['task_type'] == 'report_chat':
+        if payload.get('task_type') == 'chat_response':
             return {
                 'is_allowed': False,
-                'risk_level': 'medium',
-                'blocked_reason': 'out_of_scope',
-                'safe_message': '리포트와 관련된 건강기능식품 질문만 답변할 수 있습니다.',
+                'risk_level': 'high',
+                'blocked_reason': 'medical_high_risk',
+                'safe_message': '의학적 진단, 처방, 약물 변경은 제공할 수 없습니다. 전문가와 상담하세요.',
                 'needs_clarification': False,
                 'questions': [],
             }
@@ -177,7 +182,8 @@ class FakeBlockingChatInputAIClient(FakeAIClient):
         return super().input_guardrail(payload)
 
     def chat_respond(self, payload):
-        raise AssertionError('chat_respond should not be called when input guardrail blocks')
+        self.chat_respond_called = True
+        return super().chat_respond(payload)
 
 
 class SurveyMetadataApiTests(APITestCase):
@@ -321,28 +327,202 @@ class ReportApiTests(APITestCase):
         self.assertIn('content', message_response.data)
         self.assertIn('citations', message_response.data)
 
-    def test_report_message_blocks_out_of_scope_input(self):
-        create_response = self.create_report()
-        report_id = create_response.data['id']
+    def test_report_message_input_guardrail_blocks_before_chat_generation(self):
+        guarded_client = ChatInputBlockedAIClient()
 
-        with patch(
-            'reports.services.get_ai_client',
-            return_value=FakeBlockingChatInputAIClient(),
-        ):
+        with patch('reports.services.get_ai_client', return_value=guarded_client):
+            create_response = self.create_report()
+            report_id = create_response.data['id']
+
             message_response = self.client.post(
                 f'/api/v1/reports/{report_id}/messages/',
-                {'content': '오늘 축구 경기 결과 알려줘'},
+                {'content': '복용 중인 약을 끊어도 되나요?'},
                 format='json',
             )
 
         self.assertEqual(message_response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(
-            message_response.data['content'],
-            '리포트와 관련된 건강기능식품 질문만 답변할 수 있습니다.',
-        )
+        self.assertEqual(message_response.data['role'], 'assistant')
         self.assertEqual(message_response.data['guardrail_result']['is_allowed'], False)
+        self.assertIn('전문가와 상담', message_response.data['content'])
+        self.assertFalse(guarded_client.chat_respond_called)
+
+    @override_settings(REPORT_DAILY_CREATE_LIMIT=3)
+    def test_report_daily_create_limit(self):
+        for _ in range(3):
+            response = self.create_report()
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        limited_response = self.create_report()
+
         self.assertEqual(
-            message_response.data['guardrail_result']['blocked_reason'],
-            'out_of_scope',
+            limited_response.status_code,
+            status.HTTP_429_TOO_MANY_REQUESTS,
         )
-        self.assertEqual(message_response.data['citations'], [])
+        self.assertEqual(limited_response.data['error_code'], 'rate_limit_exceeded')
+        self.assertEqual(limited_response.data['details']['resource'], 'report')
+
+    @override_settings(REPORT_CHAT_DAILY_CREATE_LIMIT=30)
+    def test_report_chat_daily_create_limit(self):
+        create_response = self.create_report()
+        report_id = create_response.data['id']
+
+        for _ in range(30):
+            response = self.client.post(
+                f'/api/v1/reports/{report_id}/messages/',
+                {'content': 'When should I take magnesium?'},
+                format='json',
+            )
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        limited_response = self.client.post(
+            f'/api/v1/reports/{report_id}/messages/',
+            {'content': 'When should I take magnesium?'},
+            format='json',
+        )
+
+        self.assertEqual(
+            limited_response.status_code,
+            status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+        self.assertEqual(limited_response.data['error_code'], 'rate_limit_exceeded')
+        self.assertEqual(
+            limited_response.data['details']['resource'],
+            'report_chat',
+        )
+
+
+class IherbLinkMappingTests(APITestCase):
+    """
+    iHerb URL allowlist 검증 및 서버 저장값 기반 응답 주입 테스트.
+    """
+
+    def setUp(self):
+        self.ai_client_patcher = patch(
+            'reports.services.get_ai_client',
+            return_value=FakeAIClient(),
+        )
+        self.ai_client_patcher.start()
+        self.addCleanup(self.ai_client_patcher.stop)
+
+        self.user = User.objects.create_user(
+            email='iherb_test@example.com',
+            username='iherb_tester',
+            password='StrongPass1234!',
+        )
+        self.client.force_authenticate(user=self.user)
+        self.health_goal = HealthGoal.objects.create(
+            code='fatigue', name='Fatigue', order=1, is_active=True
+        )
+        self.medication = MedicationOption.objects.create(
+            code='anticoagulant', name='Anticoagulant', order=1, is_active=True
+        )
+        self.condition = SpecialConditionOption.objects.create(
+            code='allergy', name='Allergy', order=1, is_active=True
+        )
+
+    def _create_report(self):
+        return self.client.post(
+            '/api/v1/reports/',
+            {
+                'age': 30,
+                'gender': 'female',
+                'health_goals': [{'code': self.health_goal.code, 'priority': 1}],
+                'medications': [{'code': self.medication.code}],
+                'special_conditions': [{'code': self.condition.code}],
+                'additional_notes': 'notes',
+            },
+            format='json',
+        )
+
+    def test_iherb_url_is_injected_when_mapping_exists(self):
+        """IngredientLinkMapping이 있는 성분은 iherb_url이 응답에 포함된다."""
+        IngredientLinkMapping.objects.create(
+            normalized_name='magnesium',
+            ingredient_name_ko='마그네슘',
+            iherb_url='https://kr.iherb.com/c/minerals',
+            iherb_category_name='Minerals',
+            is_active=True,
+        )
+
+        response = self._create_report()
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        ingredients = response.data['recommended_ingredients']
+        self.assertTrue(len(ingredients) > 0)
+        magnesium = next(
+            (i for i in ingredients if i.get('normalized_name') == 'magnesium'),
+            None,
+        )
+        self.assertIsNotNone(magnesium)
+        self.assertEqual(magnesium['iherb_url'], 'https://kr.iherb.com/c/minerals')
+        self.assertEqual(magnesium['iherb_category_name'], 'Minerals')
+
+    def test_iherb_url_is_null_when_no_mapping(self):
+        """IngredientLinkMapping이 없는 성분은 iherb_url이 null이다."""
+        # mapping 없음
+        response = self._create_report()
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        ingredients = response.data['recommended_ingredients']
+        magnesium = next(
+            (i for i in ingredients if i.get('normalized_name') == 'magnesium'),
+            None,
+        )
+        self.assertIsNotNone(magnesium)
+        self.assertIsNone(magnesium.get('iherb_url'))
+
+    def test_iherb_url_blocked_when_not_in_allowlist(self):
+        """allowlist 밖 도메인 URL은 저장되어 있어도 응답에 주입되지 않는다."""
+        IngredientLinkMapping.objects.create(
+            normalized_name='magnesium',
+            ingredient_name_ko='마그네슘',
+            iherb_url='https://evil.example.com/magnesium',  # allowlist 외 도메인
+            iherb_category_name='',
+            is_active=True,
+        )
+
+        response = self._create_report()
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        ingredients = response.data['recommended_ingredients']
+        magnesium = next(
+            (i for i in ingredients if i.get('normalized_name') == 'magnesium'),
+            None,
+        )
+        self.assertIsNotNone(magnesium)
+        # allowlist 밖이므로 주입 안 됨
+        self.assertIsNone(magnesium.get('iherb_url'))
+
+    def test_inactive_mapping_is_not_injected(self):
+        """is_active=False인 매핑은 주입되지 않는다."""
+        IngredientLinkMapping.objects.create(
+            normalized_name='magnesium',
+            ingredient_name_ko='마그네슘',
+            iherb_url='https://kr.iherb.com/c/minerals',
+            iherb_category_name='Minerals',
+            is_active=False,  # 비활성
+        )
+
+        response = self._create_report()
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        ingredients = response.data['recommended_ingredients']
+        magnesium = next(
+            (i for i in ingredients if i.get('normalized_name') == 'magnesium'),
+            None,
+        )
+        self.assertIsNotNone(magnesium)
+        self.assertIsNone(magnesium.get('iherb_url'))
+
+    def test_iherb_mapping_rejects_non_allowlist_url_on_validation(self):
+        mapping = IngredientLinkMapping(
+            normalized_name='magnesium',
+            ingredient_name_ko='마그네슘',
+            ingredient_name_en='Magnesium',
+            iherb_url='https://evil.example.com/magnesium',
+            iherb_category_name='Minerals',
+            is_active=True,
+        )
+
+        with self.assertRaises(ValidationError):
+            mapping.full_clean()

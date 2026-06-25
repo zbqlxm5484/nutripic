@@ -33,9 +33,9 @@ def build_rag_documents() -> list[dict[str, Any]]:
 
 
 def build_idisk_interaction_documents() -> list[dict[str, Any]]:
-    path = IDISK_DIR / "dsi_d.csv"
-    dsi_entities = load_entity_map(RAW_DATA_DIR / "DSI.csv")
-    drug_entities = load_entity_map(RAW_DATA_DIR / "D.csv")
+    path = IDISK_DIR / "relationship" / "dsi_d.csv"
+    dsi_entities = load_entity_map(IDISK_DIR / "entity" / "DSI.csv")
+    drug_entities = load_entity_map(IDISK_DIR / "entity" / "D.csv")
     documents = []
 
     for row in read_csv(path):
@@ -102,9 +102,9 @@ def build_idisk_interaction_documents() -> list[dict[str, Any]]:
 
 
 def build_idisk_disease_documents() -> list[dict[str, Any]]:
-    path = IDISK_DIR / "dsi_dis.csv"
-    dsi_entities = load_entity_map(RAW_DATA_DIR / "DSI.csv")
-    disease_entities = load_entity_map(RAW_DATA_DIR / "Dis.csv")
+    path = IDISK_DIR / "relationship" / "dsi_dis.csv"
+    dsi_entities = load_entity_map(IDISK_DIR / "entity" / "DSI.csv")
+    disease_entities = load_entity_map(IDISK_DIR / "entity" / "Dis.csv")
     documents = []
 
     for row in read_csv(path):
@@ -171,9 +171,9 @@ def build_idisk_disease_documents() -> list[dict[str, Any]]:
 
 
 def build_idisk_side_effect_documents() -> list[dict[str, Any]]:
-    path = IDISK_DIR / "dsi_ss.csv"
-    dsi_entities = load_entity_map(RAW_DATA_DIR / "DSI.csv")
-    side_effect_entities = load_entity_map(RAW_DATA_DIR / "SS.csv")
+    path = IDISK_DIR / "relationship" / "dsi_ss.csv"
+    dsi_entities = load_entity_map(IDISK_DIR / "entity" / "DSI.csv")
+    side_effect_entities = load_entity_map(IDISK_DIR / "entity" / "SS.csv")
     documents = []
 
     for row in read_csv(path):
