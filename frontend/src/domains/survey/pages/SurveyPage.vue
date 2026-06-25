@@ -326,7 +326,7 @@ function getValidProfileDefaults(user) {
 <style scoped>
 /* ---- Progress strip ---- */
 .survey-progress {
-  margin-bottom: 28px;
+  margin-bottom: 0;
 }
 
 .survey-progress__meta {
