@@ -18,7 +18,6 @@ class PostListSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'title',
-            'content',
             'author',
             'like_count',
             'comment_count',
