@@ -8,6 +8,11 @@ from app.schemas.normalize import (
     NormalizedItem,
 )
 from app.services.entity_dictionary import build_rag_query_bundle, match_term
+from app.services.official_terms import (
+    OFFICIAL_HEALTH_GOAL_TERMS,
+    OFFICIAL_MEDICATION_TERMS,
+    OFFICIAL_SPECIAL_CONDITION_TERMS,
+)
 
 TERM_MAP = {
     "피로": "fatigue",
@@ -42,27 +47,15 @@ def normalized_name(term: dict | None, fallback: str) -> str:
 def normalize(payload: NormalizeRequest) -> NormalizeResponse:
     goals = []
     for goal in payload.health_goals:
-        name_en, confidence, term = normalize_text(goal.name, {"condition", "ingredient"})
-        goals.append(
-            NormalizedGoal(
-                code=goal.code,
-                name_ko=goal.name,
-                name_en=name_en,
-                priority=goal.priority or 1,
-                confidence=confidence,
-                normalized_name=normalized_name(term, name_en),
-                term_type=term.get("term_type") if term else "condition",
-                source_ids=source_ids(term),
-            )
-        )
+        goals.append(normalize_goal(goal))
 
     medications = [
-        normalize_item(item, {"drug"})
+        normalize_item(item, {"drug"}, OFFICIAL_MEDICATION_TERMS)
         for item in payload.medications
     ]
 
     special_conditions = [
-        normalize_item(item, {"condition", "adverse_reaction"})
+        normalize_item(item, {"condition", "adverse_reaction"}, OFFICIAL_SPECIAL_CONDITION_TERMS)
         for item in payload.special_conditions
     ]
 
@@ -131,7 +124,46 @@ def normalize(payload: NormalizeRequest) -> NormalizeResponse:
     )
 
 
-def normalize_item(item, expected_types: set[str]) -> NormalizedItem:
+def normalize_goal(goal) -> NormalizedGoal:
+    term = OFFICIAL_HEALTH_GOAL_TERMS.get(goal.code)
+    if term:
+        return NormalizedGoal(
+            code=goal.code,
+            name_ko=goal.name,
+            name_en=term_name_en(term),
+            priority=goal.priority or 1,
+            confidence=term["confidence"],
+            normalized_name=term["normalized_name"],
+            term_type=term["term_type"],
+            source_ids=term["source_ids"],
+        )
+
+    name_en, confidence, term = normalize_text(goal.name, {"condition", "ingredient"})
+    return NormalizedGoal(
+        code=goal.code,
+        name_ko=goal.name,
+        name_en=name_en,
+        priority=goal.priority or 1,
+        confidence=confidence,
+        normalized_name=normalized_name(term, name_en),
+        term_type=term.get("term_type") if term else "condition",
+        source_ids=source_ids(term),
+    )
+
+
+def normalize_item(item, expected_types: set[str], official_terms: dict | None = None) -> NormalizedItem:
+    term = (official_terms or {}).get(item.code)
+    if term:
+        return NormalizedItem(
+            code=item.code,
+            name_ko=item.name,
+            name_en=term_name_en(term),
+            confidence=term["confidence"],
+            normalized_name=term["normalized_name"],
+            term_type=term["term_type"],
+            source_ids=term["source_ids"],
+        )
+
     name_en, confidence, term = normalize_text(item.name, expected_types)
     return NormalizedItem(
         code=item.code,
@@ -142,6 +174,10 @@ def normalize_item(item, expected_types: set[str]) -> NormalizedItem:
         term_type=term.get("term_type") if term else next(iter(expected_types)),
         source_ids=source_ids(term),
     )
+
+
+def term_name_en(term: dict) -> str:
+    return term["en"][0].lower().replace(" ", "_")
 
 
 def dump_model(model) -> dict:

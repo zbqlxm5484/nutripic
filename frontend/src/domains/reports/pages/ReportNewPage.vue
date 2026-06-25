@@ -62,7 +62,14 @@
           >
             <h3>{{ ingredient.name_ko || ingredient.name_en }}</h3>
             <p v-if="ingredient.name_en" class="ingredient-card__subtitle">{{ ingredient.name_en }}</p>
+            <p v-if="hasRecommendationScore(ingredient)" class="ingredient-card__score">
+              추천 적합도 {{ ingredient.recommendation_score }}% · {{ ingredient.score_label || getScoreLabel(ingredient.recommendation_score) }}
+            </p>
             <dl class="summary-list">
+              <div v-if="ingredient.score_reasons?.length">
+                <dt>적합도 근거</dt>
+                <dd>{{ formatList(ingredient.score_reasons) }}</dd>
+              </div>
               <div>
                 <dt>추천 이유</dt>
                 <dd>{{ ingredient.reason || '-' }}</dd>
@@ -93,6 +100,9 @@
               </div>
             </dl>
           </article>
+          <p class="ingredient-score-note">
+            추천 적합도는 사용자의 입력 조건, 근거 자료, 주의사항을 종합한 우선순위 점수이며, 효과 발생 확률이나 의학적 진단을 의미하지 않습니다.
+          </p>
         </template>
       </ContentSection>
 
@@ -158,6 +168,18 @@ function formatGender(value) {
 
   return labels[value] ?? value ?? '-'
 }
+
+function hasRecommendationScore(ingredient) {
+  return Number.isFinite(Number(ingredient?.recommendation_score))
+}
+
+function getScoreLabel(score) {
+  const normalizedScore = Number(score)
+  if (normalizedScore >= 80) return '높음'
+  if (normalizedScore >= 60) return '보통'
+  if (normalizedScore >= 40) return '주의 필요'
+  return '낮음'
+}
 </script>
 
 <style scoped>
@@ -192,6 +214,22 @@ function formatGender(value) {
 .ingredient-card__subtitle,
 .empty-copy {
   color: #5b6b65;
+}
+
+.ingredient-card__score {
+  width: fit-content;
+  padding: 6px 10px;
+  border: 1px solid #b9d7ce;
+  border-radius: 999px;
+  background: #edf7f3;
+  color: #24614f;
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+
+.ingredient-score-note {
+  margin-top: 14px;
+  font-size: 0.875rem;
 }
 
 dt {

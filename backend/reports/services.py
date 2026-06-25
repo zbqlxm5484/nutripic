@@ -13,6 +13,15 @@ class AIServerException(APIException):
     default_detail = 'AI 서버 호출에 실패했습니다.'
     default_code = 'ai_server_error'
 
+    def __init__(self, ai_status_code=None, ai_payload=None, ai_path=None):
+        detail = {
+            'message': self.default_detail,
+            'ai_status_code': ai_status_code,
+            'ai_path': ai_path,
+            'ai_error': ai_payload or {},
+        }
+        super().__init__(detail=detail)
+
 
 class AIServiceUnavailableException(APIException):
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
@@ -206,7 +215,11 @@ def call_ai(method, payload):
     except AIClientError as error:
         if error.status_code == status.HTTP_503_SERVICE_UNAVAILABLE:
             raise AIServiceUnavailableException() from error
-        raise AIServerException() from error
+        raise AIServerException(
+            ai_status_code=error.status_code,
+            ai_payload=error.payload,
+            ai_path=error.path,
+        ) from error
 
 
 def inject_iherb_links(ingredients: list) -> None:
@@ -326,10 +339,17 @@ def build_rag_contexts(results):
             'source_name': result.get('source_name'),
             'title': result['title'],
             'content': result['content'],
-            'metadata': result.get('metadata', {}),
+            'metadata': build_rag_metadata(result),
         }
         for result in results
     ]
+
+
+def build_rag_metadata(result):
+    metadata = dict(result.get('metadata', {}))
+    if 'score' in result:
+        metadata['score'] = result['score']
+    return metadata
 
 
 def build_report_output_text(report_response):

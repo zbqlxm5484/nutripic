@@ -142,6 +142,47 @@ def test_rag_search_finds_functional_ingredient_by_korean_claims():
         assert any(expected_title in result.title for result in response.results)
 
 
+def test_rag_search_accepts_official_mfds_functional_category():
+    response = search_rag(
+        RagSearchRequest(
+            request_id="req_test_immunity_mfds_category",
+            search_queries=["immune support 면역 기능 개선 supplements"],
+            rag_query_bundle={"mfds": {"functional_categories": ["면역 기능 개선"]}},
+            filters=RagSearchFilters(source_types=["idisk", "functional_ingredient"], top_k=8),
+        )
+    )
+
+    assert response.results
+    assert response.needs_clarification is False
+    assert response.low_rag_score is False
+    assert response.results[0].source_type == "functional_ingredient"
+    assert response.results[0].score >= rag.RAG_MIN_SCORE
+
+
+def test_rag_search_accepts_added_health_goal_categories():
+    cases = [
+        ("body fat 체지방 감소 supplements", "체지방 감소"),
+        ("bone health 관절 뼈 건강 supplements", "관절 / 뼈 건강"),
+        ("blood sugar 혈당 조절 supplements", "혈당 조절"),
+    ]
+
+    for query, category in cases:
+        response = search_rag(
+            RagSearchRequest(
+                request_id="req_test_added_mfds_category",
+                search_queries=[query],
+                rag_query_bundle={"mfds": {"functional_categories": [category]}},
+                filters=RagSearchFilters(source_types=["idisk", "functional_ingredient"], top_k=8),
+            )
+        )
+
+        assert response.results
+        assert response.needs_clarification is False
+        assert response.low_rag_score is False
+        assert response.results[0].source_type == "functional_ingredient"
+        assert response.results[0].score >= rag.RAG_MIN_SCORE
+
+
 def test_rag_search_can_filter_supplement_evidence_reference_documents():
     response = search_rag(
         RagSearchRequest(
