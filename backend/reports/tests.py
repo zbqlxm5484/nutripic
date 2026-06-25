@@ -189,6 +189,24 @@ class ChatInputBlockedAIClient(FakeAIClient):
         return super().chat_respond(payload)
 
 
+class LowRagScoreWithResultsAIClient(FakeAIClient):
+    def rag_search(self, payload):
+        response = super().rag_search(payload)
+        response['results'][0]['score'] = 0.3
+        response['needs_clarification'] = True
+        response['low_rag_score'] = True
+        return response
+
+
+class EmptyRagResultsAIClient(FakeAIClient):
+    def rag_search(self, payload):
+        return {
+            'results': [],
+            'needs_clarification': True,
+            'low_rag_score': True,
+        }
+
+
 class SurveyMetadataApiTests(APITestCase):
     def setUp(self):
         self.health_goal, _ = HealthGoal.objects.update_or_create(
@@ -307,6 +325,53 @@ class ReportApiTests(APITestCase):
         delete_response = self.client.delete(f'/api/v1/reports/{report_id}/')
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Report.objects.filter(id=report_id).exists())
+
+    def test_low_rag_score_with_results_generates_report_for_basic_goal(self):
+        with patch('reports.services.get_ai_client', return_value=LowRagScoreWithResultsAIClient()):
+            response = self.client.post(
+                '/api/v1/reports/',
+                {
+                    'age': 30,
+                    'gender': 'female',
+                    'health_goals': [
+                        {
+                            'code': self.health_goal.code,
+                            'priority': 1,
+                        }
+                    ],
+                    'medications': [],
+                    'special_conditions': [],
+                    'additional_notes': '',
+                },
+                format='json',
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['status'], 'completed')
+
+    def test_empty_rag_results_still_requests_clarification(self):
+        with patch('reports.services.get_ai_client', return_value=EmptyRagResultsAIClient()):
+            response = self.client.post(
+                '/api/v1/reports/',
+                {
+                    'age': 30,
+                    'gender': 'female',
+                    'health_goals': [
+                        {
+                            'code': self.health_goal.code,
+                            'priority': 1,
+                        }
+                    ],
+                    'medications': [],
+                    'special_conditions': [],
+                    'additional_notes': '',
+                },
+                format='json',
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'needs_clarification')
+        self.assertEqual(response.data['questions'][0]['code'], 'low_rag_quality')
 
     def test_report_messages(self):
         create_response = self.create_report()

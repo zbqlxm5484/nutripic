@@ -103,8 +103,14 @@ def build_recommended_ingredients(payload: ReportGenerateRequest) -> list[Recomm
     functional_contexts = [
         context for context in payload.rag_contexts if context.source_type == "functional_ingredient"
     ]
+    active_functional_contexts = [
+        context for context in functional_contexts if not is_cancelled_functional_ingredient(context)
+    ]
 
-    if not functional_contexts:
+    if functional_contexts and not active_functional_contexts:
+        return []
+
+    if not active_functional_contexts:
         return [
             RecommendedIngredient(
                 name_ko="마그네슘",
@@ -142,7 +148,7 @@ def build_recommended_ingredients(payload: ReportGenerateRequest) -> list[Recomm
         )
         return (-score, min_priority)
 
-    sorted_contexts = sorted(functional_contexts, key=sort_key)
+    sorted_contexts = sorted(active_functional_contexts, key=sort_key)
 
     # 약물/특이사항 이름 집합 구성 (위험 신호 탐지용)
     medication_names = {item.name_en.lower() for item in payload.normalized_input.medications}
@@ -192,10 +198,11 @@ def build_recommended_ingredients(payload: ReportGenerateRequest) -> list[Recomm
                 name_ko=ingredient_name,
                 name_en=metadata.get("ingredient_name_en") or ingredient_name,
                 normalized_name=existing_normalized_name or context.title.lower().replace(" ", "_"),
-                reason=build_recommendation_reason(
+                reason=build_readable_recommendation_reason(
                     ingredient_name=ingredient_name,
                     goal_names=[goal.name_ko for goal in payload.normalized_input.health_goals],
-                    expected_effects=expected_effects,
+                    functional_component=metadata.get("functional_component"),
+                    recommendation_score=suitability["score"],
                     warning_signals=warning_signals,
                 ),
                 recommendation_score=suitability["score"],
@@ -305,6 +312,63 @@ def extract_expected_effects(metadata: dict) -> list[str]:
 
 def has_functional_evidence(metadata: dict) -> bool:
     return bool(as_list(metadata.get("expected_effects")) or as_list(metadata.get("functional_claims")))
+
+
+def is_cancelled_functional_ingredient(context) -> bool:
+    metadata = context.metadata
+    values = [
+        context.title,
+        metadata.get("ingredient_name_ko"),
+        metadata.get("normalized_name"),
+    ]
+    return any(has_cancelled_approval_marker(value) for value in values)
+
+
+def has_cancelled_approval_marker(value) -> bool:
+    text = str(value or "").replace(" ", "")
+    return "인정취소" in text
+
+
+def build_readable_recommendation_reason(
+    *,
+    ingredient_name: str,
+    goal_names: list[str],
+    functional_component: str | None,
+    recommendation_score: int,
+    warning_signals: list[str],
+) -> str:
+    goal_text = ", ".join(goal_names[:2]) if goal_names else "선택한 건강 목표"
+    component = clean_functional_component(functional_component)
+
+    if recommendation_score >= 80:
+        if component:
+            reason = f"{ingredient_name}의 {component}은 {goal_text}에 도움줄 수 있어 추천드립니다."
+        else:
+            reason = f"{ingredient_name}은 {goal_text}에 도움줄 수 있어 추천드립니다."
+    elif recommendation_score >= 60:
+        if component:
+            reason = f"{ingredient_name}의 {component}은 {goal_text}와 관련이 있어 추천 후보로 제안드립니다."
+        else:
+            reason = f"{ingredient_name}은 {goal_text}와 관련이 있어 추천 후보로 제안드립니다."
+    else:
+        reason = f"{ingredient_name}은 {goal_text}와의 관련성이 제한적이어서 보조 후보로만 참고해 주세요."
+
+    if warning_signals:
+        reason += " 다만 입력하신 복용약과 특이사항을 고려해 적합성은 보수적으로 평가했습니다."
+
+    return reason
+
+
+def clean_functional_component(value: str | None) -> str:
+    components = as_list(value)
+    if not components:
+        return ""
+
+    component = components[0].strip()
+    if not component or component == "-":
+        return ""
+
+    return component
 
 
 def build_recommendation_reason(

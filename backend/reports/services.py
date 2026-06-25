@@ -84,7 +84,11 @@ def generate_report(request_data, user=None):
     )
 
     # RAG 결과가 없거나 score가 기준 미만이면 추가 확인 질문을 반환한다.
-    if rag_response.get('needs_clarification') or rag_response.get('low_rag_score'):
+    if should_request_rag_clarification(
+        request_data=request_data,
+        normalize_response=normalize_response,
+        rag_response=rag_response,
+    ):
         return {
             'status': 'needs_clarification',
             'questions': [
@@ -206,6 +210,35 @@ def generate_report_chat_response(report, content, user=None):
         'guardrail_result': chat_response.get('guardrail_result', {}),
         'citations': chat_response.get('citations', []),
     }
+
+
+def should_request_rag_clarification(request_data, normalize_response, rag_response):
+    if not rag_response.get('needs_clarification') and not rag_response.get('low_rag_score'):
+        return False
+
+    if not rag_response.get('results'):
+        return True
+
+    if not rag_response.get('low_rag_score'):
+        return True
+
+    return not can_generate_low_confidence_report(request_data, normalize_response)
+
+
+def can_generate_low_confidence_report(request_data, normalize_response):
+    if request_data.get('medications') or request_data.get('special_conditions'):
+        return False
+
+    normalized_goals = normalize_response.get('normalized_input', {}).get('health_goals', [])
+    if not normalized_goals:
+        return False
+
+    request_goal_codes = {goal.get('code') for goal in request_data.get('health_goals', [])}
+    normalized_goal_codes = {goal.get('code') for goal in normalized_goals}
+    if request_goal_codes != normalized_goal_codes:
+        return False
+
+    return all(float(goal.get('confidence') or 0) >= 0.7 for goal in normalized_goals)
 
 
 def call_ai(method, payload):

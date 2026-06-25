@@ -695,7 +695,7 @@ def test_report_generate_uses_functional_claims_reason_and_goal_tips():
     assert "바나바잎 추출물" in ingredient["reason"]
     assert "고시된 원료로 전환" not in ingredient["reason"]
     assert "혈당 관리" in ingredient["reason"]
-    assert "식후 혈당 상승 억제에 도움을 줄 수 있음" in ingredient["reason"]
+    assert "추천드립니다" in ingredient["reason"]
     assert any("식후" in tip or "혈당" in tip for tip in body["lifestyle_tips"])
 
 
@@ -746,6 +746,56 @@ def test_report_generate_removes_converted_ingredient_note_without_target():
 
 
 # ── citation 검증 테스트 ────────────────────────────────────────
+
+def test_report_generate_excludes_cancelled_functional_ingredients():
+    response = client.post(
+        "/internal/ai/v1/reports/generate/",
+        headers=HEADERS,
+        json={
+            "request_id": "req_test_cancelled_ingredient",
+            "user_id": 1,
+            "normalized_input": {
+                "age": 30,
+                "gender": "female",
+                "health_goals": [
+                    {
+                        "code": "immunity",
+                        "name_ko": "면역 관리",
+                        "name_en": "immunity",
+                        "priority": 1,
+                        "confidence": 0.98,
+                    }
+                ],
+                "medications": [],
+                "special_conditions": [],
+                "additional_notes": "",
+                "additional_terms": [],
+            },
+            "rag_contexts": [
+                {
+                    "document_id": "functional_ingredient_cancelled",
+                    "source_type": "functional_ingredient",
+                    "source_name": "건강기능식품 기능성원료 인정현황",
+                    "title": "잔나비걸상버섯 균사체 (인정취소)",
+                    "content": "인정취소된 기능성원료",
+                    "metadata": {
+                        "ingredient_name_ko": "잔나비걸상버섯 균사체 (인정취소)",
+                        "ingredient_name_en": "",
+                        "normalized_name": "잔나비걸상버섯_균사체_인정취소",
+                        "daily_dosage": "",
+                        "functional_claims": ["면역기능 증진에 도움을 줄 수 있음"],
+                        "side_effects": [],
+                        "precautions": [],
+                    },
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["recommended_ingredients"] == []
+
 
 def test_report_generate_citations_only_include_valid_document_ids():
     """리포트 생성 시 citation은 source_name 기준으로 두 출처만 중복 없이 포함된다."""
