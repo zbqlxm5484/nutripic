@@ -49,6 +49,24 @@
           <span class="badge badge--brand">{{ getBasisLabel(ingredient) }}</span>
         </div>
         <p class="ingredient-card__reason">{{ ingredient.reason || '-' }}</p>
+        <div v-if="hasRecommendationScore(ingredient) || ingredient.score_reasons?.length" class="ingredient-card__score">
+          <div class="ingredient-card__score-head">
+            <span class="ingredient-card__meta-label">추천 점수</span>
+            <strong v-if="hasRecommendationScore(ingredient)" class="ingredient-card__score-value">
+              {{ formatRecommendationScore(ingredient.recommendation_score) }}점
+            </strong>
+            <span v-if="ingredient.score_label" class="ingredient-card__score-label">{{ ingredient.score_label }}</span>
+          </div>
+          <div v-if="ingredient.score_reasons?.length" class="ingredient-card__score-reasons">
+            <span
+              v-for="reason in ingredient.score_reasons"
+              :key="reason"
+              class="ingredient-card__score-reason"
+            >
+              {{ reason }}
+            </span>
+          </div>
+        </div>
         <div class="ingredient-card__meta">
           <div v-if="ingredient.expected_effects?.length">
             <div class="ingredient-card__meta-label">기대 기능성</div>
@@ -92,11 +110,14 @@
         v-model="chatInput"
         title="리포트 채팅"
         description="이 리포트의 성분·섭취법을 물어볼 수 있어요. 진단·처방은 안내해 드릴 수 없어요."
+        :limit-notice="reportLimitMessages.reportChat"
         :messages="chatMessages"
         :is-loading="isChatLoading"
         :is-submitting="isChatSubmitting"
+        :submit-disabled="isReportChatLimited"
         :error-message="chatError"
         @submit="sendChatMessage"
+        @disabled-submit="showReportChatLimitToast"
       />
     </template>
   </ReportLayout>
@@ -113,9 +134,14 @@ import {
   ReportChatPanel,
   ReportLayout,
 } from '../../../shared/components'
+import { getRateLimitMessage, reportLimitMessages } from '../../../shared/constants/reportLimits'
+import { useRateLimitStatus } from '../../../shared/composables/useRateLimitStatus'
+import { useToast } from '../../../shared/composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
+const { showToast } = useToast()
+const { isReportChatLimited, reportChatLimitedMessage, markLimitedFromError } = useRateLimitStatus()
 const report = ref(null)
 const isLoading = ref(true)
 const loadError = ref('')
@@ -226,10 +252,22 @@ async function sendChatMessage(content) {
     const assistantMessage = await reportApi.sendMessage(reportId.value, { content })
     chatMessages.value = [...chatMessages.value, assistantMessage]
   } catch (error) {
-    chatError.value = error?.message || '질문을 보내지 못했습니다.'
+    if (error?.errorCode === 'rate_limit_exceeded') {
+      chatError.value = markLimitedFromError(
+        error,
+        getRateLimitMessage(error, '오늘 보낼 수 있는 리포트 채팅 횟수를 모두 사용했습니다.'),
+      )
+      showToast(chatError.value, { type: 'error' })
+    } else {
+      chatError.value = error?.message || '질문을 보내지 못했습니다.'
+    }
   } finally {
     isChatSubmitting.value = false
   }
+}
+
+function showReportChatLimitToast() {
+  showToast(reportChatLimitedMessage.value || reportLimitMessages.reportChat, { type: 'error' })
 }
 
 function getLocalChatGuardrailMessage(content) {
@@ -258,6 +296,14 @@ function getBasisLabel(ingredient) {
   const sources = ingredient.score_reasons ?? []
   if (sources.some((s) => s?.toLowerCase?.().includes('idisk'))) return 'iDISK 근거'
   return '기능성원료 인정'
+}
+
+function hasRecommendationScore(ingredient) {
+  return Number.isFinite(Number(ingredient.recommendation_score))
+}
+
+function formatRecommendationScore(score) {
+  return Math.round(Number(score))
 }
 
 function formatList(value) {
@@ -401,6 +447,52 @@ function formatGender(value) {
   font-size: 13.5px;
   line-height: 1.65;
   color: #3a423d;
+}
+
+.ingredient-card__score {
+  padding: 13px 0;
+  border-top: 1px solid #eef0ec;
+}
+
+.ingredient-card__score-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ingredient-card__score-value {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  color: #1d5840;
+}
+
+.ingredient-card__score-label {
+  padding: 4px 8px;
+  border-radius: 7px;
+  background: #f1f6ef;
+  color: #3f674e;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ingredient-card__score-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.ingredient-card__score-reason {
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: #f7f8f6;
+  color: #59635c;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
 }
 
 .ingredient-card__meta {
