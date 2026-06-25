@@ -49,6 +49,9 @@ feat: 사용자 프로필 화면 추가
 
 ## Detailed Docs
 
-- Common agent behavior: `docs/agent-guidelines.md`
-- Git branch, commit, and PR conventions: `docs/git-conventions.md`
-- API and naming conventions: `docs/api-conventions.md`
+- Common agent behavior: `docs/common/agent-guidelines.md`
+- Service definition and MVP scope: `docs/common/development.md`
+- Git branch, commit, and PR conventions: `docs/conventions/git-conventions.md`
+- API and naming conventions: `docs/conventions/api-conventions.md`
+- API specifications: `docs/api/`
+- Frontend flows and page design: `docs/frontend/`

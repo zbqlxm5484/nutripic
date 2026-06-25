@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+backend/.venv/
+ai/.venv/
+
+# Django / local database
+*.sqlite3
+db.sqlite3
+backend/db.sqlite3
+
+# Environment variables
+.env
+.env.*
+!.env.example
+ai/.env
+ai/.env.*
+!ai/.env.example
+
+# Test / coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local codebase-memory index
+.codebase-memory/
