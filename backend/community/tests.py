@@ -134,6 +134,7 @@ class CommunityApiTests(APITestCase):
         self.assertIn('results', response.data)
         self.assertNotIn('count', response.data)
         self.assertEqual(len(response.data['results']), 10)
+        self.assertIn('content', response.data['results'][0])
         self.assertIsNotNone(response.data['next'])
 
         next_response = self.client.get(response.data['next'])
