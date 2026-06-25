@@ -27,9 +27,31 @@
             <dt>나이</dt>
             <dd>{{ report.input_summary?.age ?? '-' }}</dd>
           </div>
-          <div>
-            <dt>성별</dt>
-            <dd>{{ formatGender(report.input_summary?.gender) }}</dd>
+          <span class="badge badge--brand">기능성원료 인정</span>
+        </div>
+        <p class="ingredient-card__reason">{{ ingredient.reason || '-' }}</p>
+        <div v-if="hasRecommendationScore(ingredient) || ingredient.score_reasons?.length" class="ingredient-card__score">
+          <div class="ingredient-card__score-head">
+            <span class="ingredient-card__meta-label">추천 점수</span>
+            <strong v-if="hasRecommendationScore(ingredient)" class="ingredient-card__score-value">
+              {{ formatRecommendationScore(ingredient.recommendation_score) }}점
+            </strong>
+            <span v-if="ingredient.score_label" class="ingredient-card__score-label">{{ ingredient.score_label }}</span>
+          </div>
+          <div v-if="ingredient.score_reasons?.length" class="ingredient-card__score-reasons">
+            <span
+              v-for="reason in ingredient.score_reasons"
+              :key="reason"
+              class="ingredient-card__score-reason"
+            >
+              {{ reason }}
+            </span>
+          </div>
+        </div>
+        <div class="ingredient-card__meta">
+          <div v-if="ingredient.expected_effects?.length">
+            <div class="ingredient-card__meta-label">기대 기능성</div>
+            <div class="ingredient-card__meta-value">{{ formatList(ingredient.expected_effects) }}</div>
           </div>
           <div>
             <dt>건강 목표</dt>
@@ -126,10 +148,17 @@
 
     <template #aside>
       <ReportChatPanel
-        title="리포트 기반 채팅"
-        description="리포트에 포함된 성분, 복용법, 부작용, 주의사항 범위 안에서 질문할 수 있습니다."
-        placeholder="리포트 내용에 대해 질문하세요."
+        v-model="chatInput"
+        title="리포트 채팅"
+        description="이 리포트의 성분·섭취법을 물어볼 수 있어요. 진단·처방은 안내해 드릴 수 없어요."
+        placeholder="성분에 대해 물어보기…"
+        :limit-notice="reportLimitMessages.reportChat"
         :messages="chatMessages"
+        :is-submitting="isChatSubmitting"
+        :submit-disabled="isReportChatLimited"
+        :error-message="chatError"
+        @submit="sendChatMessage"
+        @disabled-submit="showReportChatLimitToast"
       />
     </template>
   </ReportLayout>
@@ -137,14 +166,83 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { BaseButton, ContentSection, ErrorState, MedicalDisclaimer, ReportChatPanel, ReportLayout } from '../../../shared/components'
+import { reportApi } from '../../../shared/api'
+import { BaseButton, ErrorState, ReportChatPanel, ReportLayout } from '../../../shared/components'
+import { getRateLimitMessage, reportLimitMessages } from '../../../shared/constants/reportLimits'
+import { useRateLimitStatus } from '../../../shared/composables/useRateLimitStatus'
+import { useToast } from '../../../shared/composables/useToast'
 
+const { showToast } = useToast()
+const { isReportChatLimited, reportChatLimitedMessage, markLimitedFromError } = useRateLimitStatus()
 const report = ref(readLatestReport())
 const recommendedIngredients = computed(() => report.value?.recommended_ingredients ?? [])
 
-const chatMessages = [
-  { id: 'empty', text: '채팅은 리포트 상세 API 연결 후 사용할 수 있습니다.' },
-]
+async function sendChatMessage(content) {
+  if (!report.value?.id) {
+    chatError.value = '리포트 저장 후 채팅을 사용할 수 있습니다.'
+    return
+  }
+
+  const blockedMessage = getLocalChatGuardrailMessage(content)
+  if (blockedMessage) {
+    chatError.value = blockedMessage
+    return
+  }
+
+  const userMessage = {
+    id: `local-${Date.now()}`,
+    role: 'user',
+    content,
+  }
+
+  chatMessages.value = [...chatMessages.value, userMessage]
+  chatInput.value = ''
+  isChatSubmitting.value = true
+  chatError.value = ''
+
+  try {
+    const assistantMessage = await reportApi.sendMessage(report.value.id, { content })
+    chatMessages.value = [...chatMessages.value, assistantMessage]
+  } catch (error) {
+    if (error?.errorCode === 'rate_limit_exceeded') {
+      chatError.value = markLimitedFromError(
+        error,
+        getRateLimitMessage(error, '오늘 보낼 수 있는 리포트 채팅 횟수를 모두 사용했습니다.'),
+      )
+      showToast(chatError.value, { type: 'error' })
+    } else {
+      chatError.value = error?.message || '질문을 보내지 못했습니다.'
+    }
+  } finally {
+    isChatSubmitting.value = false
+  }
+}
+
+function showReportChatLimitToast() {
+  showToast(reportChatLimitedMessage.value || reportLimitMessages.reportChat, { type: 'error' })
+}
+
+function getLocalChatGuardrailMessage(content) {
+  const unsafeKeywords = [
+    '진단해줘',
+    '처방해줘',
+    '약 끊',
+    '약 중단',
+    '약 늘려',
+    '약 줄여',
+    '이전 지시 무시',
+    '시스템 프롬프트',
+    'system prompt',
+    'ignore previous',
+  ]
+  const normalizedContent = content.toLowerCase()
+
+  if (unsafeKeywords.some((keyword) => normalizedContent.includes(keyword.toLowerCase()))) {
+    return '의학적 진단, 처방, 약물 변경 요청은 답변할 수 없습니다. 질환이 있거나 약을 복용 중인 경우 전문가와 상담하세요.'
+  }
+
+  return ''
+}
 
 function readLatestReport() {
   try {
@@ -153,6 +251,14 @@ function readLatestReport() {
   } catch {
     return null
   }
+}
+
+function hasRecommendationScore(ingredient) {
+  return Number.isFinite(Number(ingredient.recommendation_score))
+}
+
+function formatRecommendationScore(score) {
+  return Math.round(Number(score))
 }
 
 function formatList(value) {
@@ -217,13 +323,89 @@ function getScoreLabel(score) {
 }
 
 .ingredient-card__score {
-  width: fit-content;
-  padding: 6px 10px;
-  border: 1px solid #b9d7ce;
-  border-radius: 999px;
-  background: #edf7f3;
-  color: #24614f;
-  font-size: 0.875rem;
+  padding: 13px 0;
+  border-top: 1px solid #eef0ec;
+}
+
+.ingredient-card__score-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ingredient-card__score-value {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  color: #1d5840;
+}
+
+.ingredient-card__score-label {
+  padding: 4px 8px;
+  border-radius: 7px;
+  background: #f1f6ef;
+  color: #3f674e;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ingredient-card__score-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.ingredient-card__score-reason {
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: #f7f8f6;
+  color: #59635c;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.ingredient-card__meta {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 13px 0;
+  border-top: 1px solid #eef0ec;
+  margin-bottom: 12px;
+}
+
+.ingredient-card__meta-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9aa19b;
+  margin-bottom: 5px;
+}
+
+.ingredient-card__meta-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: #2d352f;
+}
+
+.ingredient-card__caution {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 11px 13px;
+  background: #fdf8ec;
+  border-radius: 9px;
+  margin-bottom: 12px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #6e5a2e;
+}
+
+.ingredient-card__caution-tag {
+  flex-shrink: 0;
+  font-size: 12px;
   font-weight: 800;
 }
 
