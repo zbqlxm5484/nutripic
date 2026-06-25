@@ -2,7 +2,7 @@ import { ApiError, createApiErrorFromResponse, createNetworkError } from './apiE
 import { authTokenStorage } from './tokenStorage'
 import { getLocalMockResponse } from './localMockApi'
 
-export const API_BASE_URL = '/api/v1'
+export const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL)
 
 export const apiClient = createApiClient()
 
@@ -139,4 +139,13 @@ function joinUrl(baseUrl, endpoint) {
   const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
 
   return `${normalizedBaseUrl}${normalizedEndpoint}`
+}
+
+function normalizeApiBaseUrl(baseUrl) {
+  if (!baseUrl) return '/api/v1'
+
+  const normalizedBaseUrl = baseUrl.replace(/\/$/, '')
+  if (normalizedBaseUrl.endsWith('/api/v1')) return normalizedBaseUrl
+
+  return `${normalizedBaseUrl}/api/v1`
 }

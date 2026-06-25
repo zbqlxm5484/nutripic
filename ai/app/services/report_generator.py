@@ -111,9 +111,9 @@ def build_recommended_ingredients(payload: ReportGenerateRequest) -> list[Recomm
 
         ingredients.append(
             RecommendedIngredient(
-                name_ko=metadata.get("ingredient_name_ko", context.title),
-                name_en=metadata.get("ingredient_name_en", context.title),
-                normalized_name=metadata.get("normalized_name", context.title.lower().replace(" ", "_")),
+                name_ko=ingredient_name,
+                name_en=metadata.get("ingredient_name_en") or ingredient_name,
+                normalized_name=metadata.get("normalized_name") or context.title.lower().replace(" ", "_"),
                 reason="사용자 입력과 RAG 검색 결과를 바탕으로 관련 성분 후보로 선정했습니다.",
                 expected_effects=metadata.get("expected_effects", ["기능성 근거 확인 필요"]),
                 recommended_dosage=metadata.get(

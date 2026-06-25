@@ -15,11 +15,13 @@ from app.schemas.common import GuardrailResult
 from app.schemas.reports import (
     InputSummary,
     NormalizedGoal,
+    RagContext,
     ReportGenerateRequest,
     ReportGenerateResponse,
     ReportNormalizedInput,
 )
 from app.services import llm_generation
+from app.services.report_generator import build_template_report
 from app.services.guardrails import check_output_guardrail
 from app.schemas.guardrails import OutputGuardrailRequest
 
@@ -97,6 +99,31 @@ def test_report_generation_blocks_when_rewrite_still_fails(monkeypatch):
     assert result.guardrail_result.is_allowed is False
     assert result.recommended_ingredients == []
     assert "의료적으로 부적절한 표현" in result.disclaimer
+
+
+def test_report_template_handles_missing_english_ingredient_name():
+    request = build_report_request()
+    request.rag_contexts = [
+        RagContext(
+            document_id="functional_ingredient_test",
+            source_type="functional_ingredient",
+            source_name="functional ingredient source",
+            title="Magnesium",
+            content="Magnesium content",
+            metadata={
+                "ingredient_name_ko": "Magnesium",
+                "ingredient_name_en": None,
+                "normalized_name": "magnesium",
+                "daily_dosage": "100 mg",
+                "precautions": [],
+            },
+        )
+    ]
+
+    result = build_template_report(request)
+
+    assert result.recommended_ingredients[0].name_ko == "Magnesium"
+    assert result.recommended_ingredients[0].name_en == "Magnesium"
 
 
 def enable_fake_llm(monkeypatch):

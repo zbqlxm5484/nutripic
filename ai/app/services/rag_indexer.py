@@ -12,6 +12,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 RAW_DATA_DIR = PROJECT_ROOT / "ai_data"
 IDISK_DIR = RAW_DATA_DIR / "iDISK"
+IDISK_ENTITY_DIR = IDISK_DIR / "entity"
+IDISK_RELATIONSHIP_DIR = IDISK_DIR / "relationship"
 OUTPUT_PATH = PROJECT_ROOT / "ai" / "app" / "data" / "rag_documents.json"
 
 FUNCTIONAL_INGREDIENT_SOURCE_NAME = "건강기능식품 기능성원료 인정현황"
