@@ -117,6 +117,8 @@ class FakeAIClient:
                     'recommended_dosage': '기능성 원료 인정현황 기준 범위 내에서 섭취하세요.',
                     'side_effects': ['설사', '복부 불편감'],
                     'precautions': ['질환이 있거나 약을 복용 중인 경우 전문가와 상담하세요.'],
+                    'iherb_url': 'https://kr.iherb.com/c/supplements?cids=1805',
+                    'iherb_category_name': '미네랄',
                 }
             ],
             'lifestyle_tips': ['카페인 섭취 시간과 양을 조절해 보세요.'],
@@ -188,23 +190,17 @@ class ChatInputBlockedAIClient(FakeAIClient):
 
 class SurveyMetadataApiTests(APITestCase):
     def setUp(self):
-        self.health_goal = HealthGoal.objects.create(
+        self.health_goal, _ = HealthGoal.objects.update_or_create(
             code='fatigue',
-            name='Fatigue',
-            order=1,
-            is_active=True,
+            defaults={'name': 'Fatigue', 'order': 1, 'is_active': True},
         )
-        self.medication = MedicationOption.objects.create(
+        self.medication, _ = MedicationOption.objects.update_or_create(
             code='anticoagulant',
-            name='Anticoagulant',
-            order=1,
-            is_active=True,
+            defaults={'name': 'Anticoagulant', 'order': 1, 'is_active': True},
         )
-        self.condition = SpecialConditionOption.objects.create(
+        self.condition, _ = SpecialConditionOption.objects.update_or_create(
             code='allergy',
-            name='Allergy',
-            order=1,
-            is_active=True,
+            defaults={'name': 'Allergy', 'order': 1, 'is_active': True},
         )
 
     def test_metadata_endpoints_are_public(self):
@@ -215,9 +211,18 @@ class SurveyMetadataApiTests(APITestCase):
         self.assertEqual(health_response.status_code, status.HTTP_200_OK)
         self.assertEqual(medication_response.status_code, status.HTTP_200_OK)
         self.assertEqual(condition_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(health_response.data[0]['code'], self.health_goal.code)
-        self.assertEqual(medication_response.data[0]['code'], self.medication.code)
-        self.assertEqual(condition_response.data[0]['code'], self.condition.code)
+        self.assertIn(
+            self.health_goal.code,
+            {item['code'] for item in health_response.data},
+        )
+        self.assertIn(
+            self.medication.code,
+            {item['code'] for item in medication_response.data},
+        )
+        self.assertIn(
+            self.condition.code,
+            {item['code'] for item in condition_response.data},
+        )
 
 
 class ReportApiTests(APITestCase):
@@ -235,23 +240,17 @@ class ReportApiTests(APITestCase):
             password='StrongPass1234!',
         )
         self.client.force_authenticate(user=self.user)
-        self.health_goal = HealthGoal.objects.create(
+        self.health_goal, _ = HealthGoal.objects.update_or_create(
             code='fatigue',
-            name='Fatigue',
-            order=1,
-            is_active=True,
+            defaults={'name': 'Fatigue', 'order': 1, 'is_active': True},
         )
-        self.medication = MedicationOption.objects.create(
+        self.medication, _ = MedicationOption.objects.update_or_create(
             code='anticoagulant',
-            name='Anticoagulant',
-            order=1,
-            is_active=True,
+            defaults={'name': 'Anticoagulant', 'order': 1, 'is_active': True},
         )
-        self.condition = SpecialConditionOption.objects.create(
+        self.condition, _ = SpecialConditionOption.objects.update_or_create(
             code='allergy',
-            name='Allergy',
-            order=1,
-            is_active=True,
+            defaults={'name': 'Allergy', 'order': 1, 'is_active': True},
         )
 
     def create_report(self):
@@ -410,14 +409,17 @@ class IherbLinkMappingTests(APITestCase):
             password='StrongPass1234!',
         )
         self.client.force_authenticate(user=self.user)
-        self.health_goal = HealthGoal.objects.create(
-            code='fatigue', name='Fatigue', order=1, is_active=True
+        self.health_goal, _ = HealthGoal.objects.update_or_create(
+            code='fatigue',
+            defaults={'name': 'Fatigue', 'order': 1, 'is_active': True},
         )
-        self.medication = MedicationOption.objects.create(
-            code='anticoagulant', name='Anticoagulant', order=1, is_active=True
+        self.medication, _ = MedicationOption.objects.update_or_create(
+            code='anticoagulant',
+            defaults={'name': 'Anticoagulant', 'order': 1, 'is_active': True},
         )
-        self.condition = SpecialConditionOption.objects.create(
-            code='allergy', name='Allergy', order=1, is_active=True
+        self.condition, _ = SpecialConditionOption.objects.update_or_create(
+            code='allergy',
+            defaults={'name': 'Allergy', 'order': 1, 'is_active': True},
         )
 
     def _create_report(self):
@@ -436,12 +438,14 @@ class IherbLinkMappingTests(APITestCase):
 
     def test_iherb_url_is_injected_when_mapping_exists(self):
         """IngredientLinkMapping이 있는 성분은 iherb_url이 응답에 포함된다."""
-        IngredientLinkMapping.objects.create(
+        IngredientLinkMapping.objects.update_or_create(
             normalized_name='magnesium',
-            ingredient_name_ko='마그네슘',
-            iherb_url='https://kr.iherb.com/c/minerals',
-            iherb_category_name='Minerals',
-            is_active=True,
+            defaults={
+                'ingredient_name_ko': '마그네슘',
+                'iherb_url': 'https://kr.iherb.com/c/minerals',
+                'iherb_category_name': '미네랄',
+                'is_active': True,
+            },
         )
 
         response = self._create_report()
@@ -455,11 +459,12 @@ class IherbLinkMappingTests(APITestCase):
         )
         self.assertIsNotNone(magnesium)
         self.assertEqual(magnesium['iherb_url'], 'https://kr.iherb.com/c/minerals')
-        self.assertEqual(magnesium['iherb_category_name'], 'Minerals')
+        self.assertEqual(magnesium['iherb_category_name'], '미네랄')
 
-    def test_iherb_url_is_null_when_no_mapping(self):
-        """IngredientLinkMapping이 없는 성분은 iherb_url이 null이다."""
-        # mapping 없음
+    def test_ai_iherb_url_is_preserved_when_no_mapping(self):
+        """DB 매핑이 없어도 AI 사전 기반 iherb_url은 allowlist 검증 후 유지된다."""
+        IngredientLinkMapping.objects.filter(normalized_name='magnesium').delete()
+
         response = self._create_report()
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -469,16 +474,22 @@ class IherbLinkMappingTests(APITestCase):
             None,
         )
         self.assertIsNotNone(magnesium)
-        self.assertIsNone(magnesium.get('iherb_url'))
+        self.assertEqual(
+            magnesium.get('iherb_url'),
+            'https://kr.iherb.com/c/supplements?cids=1805',
+        )
+        self.assertEqual(magnesium.get('iherb_category_name'), '미네랄')
 
     def test_iherb_url_blocked_when_not_in_allowlist(self):
         """allowlist 밖 도메인 URL은 저장되어 있어도 응답에 주입되지 않는다."""
-        IngredientLinkMapping.objects.create(
+        IngredientLinkMapping.objects.update_or_create(
             normalized_name='magnesium',
-            ingredient_name_ko='마그네슘',
-            iherb_url='https://evil.example.com/magnesium',  # allowlist 외 도메인
-            iherb_category_name='',
-            is_active=True,
+            defaults={
+                'ingredient_name_ko': '마그네슘',
+                'iherb_url': 'https://evil.example.com/magnesium',  # allowlist 외 도메인
+                'iherb_category_name': '',
+                'is_active': True,
+            },
         )
 
         response = self._create_report()
@@ -495,12 +506,14 @@ class IherbLinkMappingTests(APITestCase):
 
     def test_inactive_mapping_is_not_injected(self):
         """is_active=False인 매핑은 주입되지 않는다."""
-        IngredientLinkMapping.objects.create(
+        IngredientLinkMapping.objects.update_or_create(
             normalized_name='magnesium',
-            ingredient_name_ko='마그네슘',
-            iherb_url='https://kr.iherb.com/c/minerals',
-            iherb_category_name='Minerals',
-            is_active=False,  # 비활성
+            defaults={
+                'ingredient_name_ko': '마그네슘',
+                'iherb_url': 'https://kr.iherb.com/c/minerals',
+                'iherb_category_name': '미네랄',
+                'is_active': False,  # 비활성
+            },
         )
 
         response = self._create_report()

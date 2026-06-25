@@ -6,6 +6,38 @@ from typing import Any
 
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
+IHERB_CATEGORY_URL_TEMPLATE = "https://kr.iherb.com/c/supplements?cids={cid}"
+
+IHERB_CATEGORY_OVERRIDES = {
+    "magnesium": {
+        "cid": "1805",
+        "category_name": "미네랄",
+    },
+    "vitamin_c": {
+        "cid": "1849",
+        "category_name": "비타민 C",
+    },
+    "vitamin_d": {
+        "cid": "1835",
+        "category_name": "비타민 D",
+    },
+    "zinc": {
+        "cid": "1857",
+        "category_name": "미네랄",
+    },
+    "omega3": {
+        "cid": "100826",
+        "category_name": "피쉬 오일 & 오메가",
+    },
+    "omega_3": {
+        "cid": "100826",
+        "category_name": "피쉬 오일 & 오메가",
+    },
+    "omega_3_fatty_acids": {
+        "cid": "100826",
+        "category_name": "피쉬 오일 & 오메가",
+    },
+}
 
 FALLBACK_TERMS = [
     {
@@ -99,6 +131,46 @@ def match_term(value: str, expected_types: set[str] | None = None) -> dict[str, 
         if not expected_types or term["term_type"] in expected_types:
             return term
     return None
+
+
+@lru_cache(maxsize=1)
+def iherb_mapping_index() -> dict[str, dict[str, str]]:
+    index = {
+        normalized_name: build_iherb_mapping(mapping["cid"], mapping["category_name"])
+        for normalized_name, mapping in IHERB_CATEGORY_OVERRIDES.items()
+    }
+
+    for term in load_terms():
+        if term.get("term_type") != "ingredient":
+            continue
+
+        cids = term.get("source_ids", {}).get("iherb") or []
+        if not cids:
+            continue
+
+        normalized_name = term.get("normalized_name")
+        category_name = first_text(term.get("ko")) or first_text(term.get("en")) or normalized_name
+        if normalized_name and normalized_name not in index:
+            index[normalized_name] = build_iherb_mapping(cids[0], category_name)
+
+    return index
+
+
+def first_text(values: list[str] | None) -> str | None:
+    return values[0] if values else None
+
+
+def build_iherb_mapping(cid: str, category_name: str) -> dict[str, str]:
+    return {
+        "iherb_url": IHERB_CATEGORY_URL_TEMPLATE.format(cid=cid),
+        "iherb_category_name": category_name,
+    }
+
+
+def iherb_mapping_for(normalized_name: str | None) -> dict[str, str] | None:
+    if not normalized_name:
+        return None
+    return iherb_mapping_index().get(normalized_name)
 
 
 def english_name(term: dict[str, Any], fallback: str) -> str:

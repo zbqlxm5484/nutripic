@@ -460,8 +460,8 @@ def test_normalize_low_confidence_returns_needs_clarification():
 
 # ── report generator: iherb 필드 null 검증 ──────────────────────
 
-def test_report_generate_iherb_fields_are_null():
-    """AI 서버 리포트 생성 시 iherb_url, iherb_category_name은 항상 null이다."""
+def test_report_generate_iherb_fields_are_dictionary_mapped():
+    """AI 서버는 엔티티 사전 기반 iherb_url, iherb_category_name을 내려준다."""
     response = client.post(
         "/internal/ai/v1/reports/generate/",
         headers=HEADERS,
@@ -510,9 +510,8 @@ def test_report_generate_iherb_fields_are_null():
     body = response.json()
     assert body["status"] == "completed"
     ingredient = body["recommended_ingredients"][0]
-    # AI 서버는 iherb_url을 생성하지 않는다
-    assert ingredient.get("iherb_url") is None
-    assert ingredient.get("iherb_category_name") is None
+    assert ingredient.get("iherb_url") == "https://kr.iherb.com/c/supplements?cids=1805"
+    assert ingredient.get("iherb_category_name") == "미네랄"
 
 
 # ── citation 검증 테스트 ────────────────────────────────────────

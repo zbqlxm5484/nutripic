@@ -361,6 +361,7 @@ def build_report_prompt(
                 "Recommend ingredients only, not products.",
                 "Do not invent citations.",
                 "Use document_id values from rag_contexts only.",
+                "Do not invent iHerb URLs or categories; leave iherb fields null.",
                 "Keep medical safety language cautious.",
             ],
         },
@@ -444,8 +445,8 @@ def build_report_output_schema() -> dict:
                 "recommended_dosage": "string",
                 "side_effects": ["string"],
                 "precautions": ["string"],
-                "iherb_url": None,
-                "iherb_category_name": None,
+                "iherb_url": "string or null",
+                "iherb_category_name": "string or null",
             }
         ],
         "lifestyle_tips": ["string"],
