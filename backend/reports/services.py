@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.exceptions import APIException
 
 from .ai_client import AIClientError, AIServiceUnavailableError, get_ai_client
+from .models import IHERB_ALLOWED_DOMAINS, IngredientLinkMapping
 
 
 class AIServerException(APIException):
@@ -71,6 +72,21 @@ def generate_report(request_data, user=None):
         },
     )
 
+    # RAG 결과가 없거나 score가 기준 미만이면 추가 확인 질문을 반환한다.
+    if rag_response.get('needs_clarification') or rag_response.get('low_rag_score'):
+        return {
+            'status': 'needs_clarification',
+            'questions': [
+                {
+                    'code': 'low_rag_quality',
+                    'message': (
+                        '입력하신 건강 목표와 관련된 충분한 근거 자료를 찾지 못했습니다. '
+                        '건강 목표나 증상을 더 구체적으로 설명해 주시겠어요?'
+                    ),
+                }
+            ],
+        }
+
     report_response = call_ai(
         client.generate_report,
         {
@@ -97,62 +113,43 @@ def generate_report(request_data, user=None):
     if clarification:
         return clarification
 
+    inject_iherb_links(report_response.get('recommended_ingredients', []))
     return report_response
 
 
 def generate_report_chat_response(report, content, user=None):
     request_id = create_request_id()
     client = get_ai_client()
-    report_context = build_report_context(report)
+    current_user = user or report.user
 
     input_guardrail = call_ai(
         client.input_guardrail,
         {
             'request_id': request_id,
-            'user_id': get_user_id(user or report.user),
-            'task_type': 'report_chat',
+            'user_id': get_user_id(current_user),
+            'task_type': 'chat_response',
             'input_text': content,
             'structured_input': {
                 'report_id': report.id,
-                'report_title': report.title,
-                'allowed_scope': [
-                    'report_follow_up',
-                    'ingredient_information',
-                    'intake_precautions',
-                    'citation_questions',
+                'recommended_ingredients': [
+                    ingredient.get('normalized_name', '')
+                    for ingredient in report.recommended_ingredients
+                    if ingredient.get('normalized_name')
                 ],
             },
-            'report_context': report_context,
         },
     )
+
     if input_guardrail.get('is_allowed') is False:
         return {
             'role': 'assistant',
             'content': (
                 input_guardrail.get('safe_message')
-                or '리포트와 관련된 건강기능식품 질문에 대해서만 답변할 수 있습니다.'
+                or '요청을 처리할 수 없습니다. 질환이 있거나 약을 복용 중인 경우 전문가와 상담하세요.'
             ),
             'guardrail_result': {
                 'is_allowed': False,
-                'risk_level': input_guardrail.get('risk_level', 'medium'),
-                'blocked_reason': input_guardrail.get('blocked_reason'),
-            },
-            'citations': [],
-        }
-    if input_guardrail.get('needs_clarification'):
-        questions = input_guardrail.get('questions') or []
-        message = (
-            questions[0].get('message')
-            if questions and isinstance(questions[0], dict)
-            else '질문을 조금 더 구체적으로 입력해 주세요.'
-        )
-        return {
-            'role': 'assistant',
-            'content': message,
-            'guardrail_result': {
-                'is_allowed': True,
-                'risk_level': input_guardrail.get('risk_level', 'low'),
-                'needs_clarification': True,
+                'risk_level': input_guardrail.get('risk_level', 'high'),
             },
             'citations': [],
         }
@@ -161,7 +158,7 @@ def generate_report_chat_response(report, content, user=None):
         client.chat_respond,
         {
             'request_id': request_id,
-            'user_id': get_user_id(user or report.user),
+            'user_id': get_user_id(current_user),
             'report_id': report.id,
             'report_context': report_context,
             'message': {
@@ -208,6 +205,48 @@ def call_ai(method, payload):
         if error.status_code == status.HTTP_503_SERVICE_UNAVAILABLE:
             raise AIServiceUnavailableException() from error
         raise AIServerException() from error
+
+
+def inject_iherb_links(ingredients: list) -> None:
+    """
+    recommended_ingredients 리스트를 in-place로 수정한다.
+    normalized_name 기준으로 IngredientLinkMapping을 조회하고,
+    allowlist 도메인 검증을 통과한 URL만 주입한다.
+    """
+    if not ingredients:
+        return
+
+    normalized_names = [
+        ingredient.get('normalized_name', '')
+        for ingredient in ingredients
+        if ingredient.get('normalized_name')
+    ]
+
+    mappings = IngredientLinkMapping.objects.filter(
+        normalized_name__in=normalized_names,
+        is_active=True,
+    )
+
+    from urllib.parse import urlparse
+
+    mapping_dict = {}
+    for mapping in mappings:
+        try:
+            parsed = urlparse(mapping.iherb_url)
+            if parsed.netloc in IHERB_ALLOWED_DOMAINS:
+                mapping_dict[mapping.normalized_name] = mapping
+        except Exception:
+            pass
+
+    for ingredient in ingredients:
+        normalized_name = ingredient.get('normalized_name', '')
+        mapping = mapping_dict.get(normalized_name)
+        if mapping:
+            ingredient['iherb_url'] = mapping.iherb_url
+            ingredient['iherb_category_name'] = mapping.iherb_category_name or None
+        else:
+            ingredient.setdefault('iherb_url', None)
+            ingredient.setdefault('iherb_category_name', None)
 
 
 def create_request_id():
@@ -308,6 +347,7 @@ def build_report_context(report):
             for ingredient in report.recommended_ingredients
         ],
         'disclaimer': report.disclaimer,
+        'citations': report.citations,
     }
 
 

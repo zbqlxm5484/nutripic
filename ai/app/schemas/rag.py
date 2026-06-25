@@ -27,3 +27,5 @@ class RagSearchResult(BaseModel):
 
 class RagSearchResponse(BaseModel):
     results: list[RagSearchResult] = Field(default_factory=list)
+    needs_clarification: bool = False
+    low_rag_score: bool = False
